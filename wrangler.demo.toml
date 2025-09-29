@@ -1,0 +1,18 @@
+name = "task-priority-demo"
+main = "src/server/index.ts"
+compatibility_date = "2025-09-29"
+compatibility_flags = ["nodejs_compat"]
+account_id = "5cbaf7492795d0e9eafa26240b14389c"
+
+# Assets (Frontend build output)
+[assets]
+directory = "./dist"
+
+# Variables (non-secret)
+[vars]
+ACCESS_AUD = "demo-mode-no-auth"
+NODE_ENV = "demo"
+
+# Development (local D1)
+[dev]
+port = 8788

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, Clock, Archive, X } from 'lucide-react';
 import { api } from '../lib/api';
+import { taskStorage } from '../../lib/storage';
+import { APP_CONFIG } from '../../utils/config';
+import { DemoNotice } from '../components/DemoNotice';
 import { calculateICE, getDecisionInfo, getTimeBlockInfo } from '../lib/helpers';
 import { getDecisionRecommendation } from '../../utils/algorithms';
 import type { Task, CreateTaskInput, User, OverviewStats } from '../../utils/types';
@@ -38,15 +41,29 @@ const Dashboard = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [userRes, tasksRes, statsRes] = await Promise.all([
-        api.getMe(),
-        api.getTasks({ status: statusFilter }),
-        api.getOverview()
-      ]);
-
-      setUser(userRes);
-      setTasks(tasksRes);
-      setStats(statsRes);
+      
+      if (APP_CONFIG.IS_DEMO) {
+        // Use storage abstraction for demo mode
+        const [userRes, tasksRes, statsRes] = await Promise.all([
+          taskStorage.getCurrentUser(),
+          taskStorage.getTasks(),
+          taskStorage.getOverviewStats()
+        ]);
+        setUser(userRes);
+        setTasks(tasksRes);
+        setStats(statsRes);
+      } else {
+        // Use API for production mode
+        const [userRes, tasksRes, statsRes] = await Promise.all([
+          api.getMe(),
+          api.getTasks({ status: statusFilter }),
+          api.getOverview()
+        ]);
+        setUser(userRes);
+        setTasks(tasksRes);
+        setStats(statsRes);
+      }
+      
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -66,7 +83,10 @@ const Dashboard = () => {
     if (!newTask.name.trim()) return;
 
     try {
-      const createdTask = await api.createTask(newTask);
+      const createdTask = APP_CONFIG.IS_DEMO 
+        ? await taskStorage.createTask(newTask)
+        : await api.createTask(newTask);
+        
       setTasks([...tasks, createdTask]);
       setNewTask({
         name: '',
@@ -81,7 +101,9 @@ const Dashboard = () => {
       });
 
       // Refresh stats
-      const updatedStats = await api.getOverview();
+      const updatedStats = APP_CONFIG.IS_DEMO 
+        ? await taskStorage.getOverviewStats()
+        : await api.getOverview();
       setStats(updatedStats);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create task');
@@ -90,11 +112,17 @@ const Dashboard = () => {
 
   const deleteTask = async (id: number) => {
     try {
-      await api.deleteTask(id);
+      if (APP_CONFIG.IS_DEMO) {
+        await taskStorage.deleteTask(id);
+      } else {
+        await api.deleteTask(id);
+      }
       setTasks(tasks.filter(t => t.id !== id));
 
       // Refresh stats
-      const updatedStats = await api.getOverview();
+      const updatedStats = APP_CONFIG.IS_DEMO 
+        ? await taskStorage.getOverviewStats()
+        : await api.getOverview();
       setStats(updatedStats);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete task');
@@ -177,11 +205,19 @@ const Dashboard = () => {
 
   const archiveTask = async (id: number) => {
     try {
-      await api.updateTask(id, { status: 'archived' });
-      setTasks(tasks.map(t => t.id === id ? { ...t, status: 'archived' } : t));
+      if (APP_CONFIG.IS_DEMO) {
+        // For demo, we'll just mark as completed since we don't have archived status
+        await taskStorage.completeTask(id);
+        setTasks(tasks.map(t => t.id === id ? { ...t, isCompleted: true } : t));
+      } else {
+        await api.updateTask(id, { status: 'archived' });
+        setTasks(tasks.map(t => t.id === id ? { ...t, status: 'archived' } : t));
+      }
 
       // Refresh stats
-      const updatedStats = await api.getOverview();
+      const updatedStats = APP_CONFIG.IS_DEMO 
+        ? await taskStorage.getOverviewStats()
+        : await api.getOverview();
       setStats(updatedStats);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to archive task');
@@ -190,11 +226,19 @@ const Dashboard = () => {
 
   const reactivateTask = async (id: number) => {
     try {
-      await api.updateTask(id, { status: 'active' });
-      setTasks(tasks.map(t => t.id === id ? { ...t, status: 'active', completedAt: undefined } : t));
+      if (APP_CONFIG.IS_DEMO) {
+        // For demo, we'll update the task to mark as not completed
+        await taskStorage.updateTask(id, { isCompleted: false });
+        setTasks(tasks.map(t => t.id === id ? { ...t, isCompleted: false } : t));
+      } else {
+        await api.updateTask(id, { status: 'active' });
+        setTasks(tasks.map(t => t.id === id ? { ...t, status: 'active', completedAt: undefined } : t));
+      }
 
       // Refresh stats
-      const updatedStats = await api.getOverview();
+      const updatedStats = APP_CONFIG.IS_DEMO 
+        ? await taskStorage.getOverviewStats()
+        : await api.getOverview();
       setStats(updatedStats);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reactivate task');
@@ -204,6 +248,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="w-full max-w-7xl mx-auto p-6 bg-gray-50">
+        <DemoNotice />
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
