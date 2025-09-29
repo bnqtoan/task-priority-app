@@ -12,6 +12,11 @@ interface TaskStorage {
   deleteTask(id: number): Promise<void>
   completeTask(id: number): Promise<Task>
 
+  // Time tracking
+  startFocusSession(taskId: number): Promise<Task>
+  endFocusSession(taskId: number, duration: number): Promise<Task>
+  addTimeEntry(taskId: number, duration: number, type: 'focus' | 'regular'): Promise<Task>
+
   // User
   getCurrentUser(): Promise<User>
 
@@ -112,6 +117,40 @@ class LocalStorageTaskStorage implements TaskStorage {
 
   async completeTask(id: number): Promise<Task> {
     return this.updateTask(id, { status: 'completed', completedAt: new Date() })
+  }
+
+  async startFocusSession(taskId: number): Promise<Task> {
+    return this.updateTask(taskId, { 
+      isInFocus: true, 
+      focusStartedAt: new Date() 
+    })
+  }
+
+  async endFocusSession(taskId: number, duration: number): Promise<Task> {
+    const task = await this.updateTask(taskId, { 
+      isInFocus: false, 
+      focusStartedAt: undefined,
+      actualTime: (await this.getTasks()).find(t => t.id === taskId)?.actualTime || 0 + duration
+    })
+    return task
+  }
+
+  async addTimeEntry(taskId: number, duration: number, type: 'focus' | 'regular'): Promise<Task> {
+    const tasks = this.getTasksSync()
+    const task = tasks.find(t => t.id === taskId)
+    if (!task) {
+      throw new Error('Task not found')
+    }
+
+    const updatedTask = {
+      ...task,
+      actualTime: (task.actualTime || 0) + duration,
+      updatedAt: new Date()
+    }
+
+    const updatedTasks = tasks.map(t => t.id === taskId ? updatedTask : t)
+    this.saveTasksSync(updatedTasks)
+    return updatedTask
   }
 
   async getCurrentUser(): Promise<User> {
@@ -218,6 +257,18 @@ class ApiTaskStorage implements TaskStorage {
 
   async completeTask(id: number): Promise<Task> {
     return api.completeTask(id)
+  }
+
+  async startFocusSession(taskId: number): Promise<Task> {
+    return api.startFocusSession(taskId)
+  }
+
+  async endFocusSession(taskId: number, duration: number): Promise<Task> {
+    return api.endFocusSession(taskId, duration)
+  }
+
+  async addTimeEntry(taskId: number, duration: number, type: 'focus' | 'regular'): Promise<Task> {
+    return api.addTimeEntry(taskId, duration, type)
   }
 
   async getCurrentUser(): Promise<User> {

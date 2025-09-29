@@ -36,10 +36,35 @@ export const tasks = sqliteTable('tasks', {
   // Status
   status: text('status').notNull().default('active'), // 'active' | 'completed' | 'archived'
 
+  // Time tracking
+  actualTime: integer('actual_time').default(0), // total time spent in minutes
+  isInFocus: integer('is_in_focus', { mode: 'boolean' }).default(false), // currently in focus mode
+  focusStartedAt: integer('focus_started_at', { mode: 'timestamp' }), // when current focus session started
+
   // Timestamps
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
   completedAt: integer('completed_at', { mode: 'timestamp' }),
+});
+
+// Time Entries Table
+export const timeEntries = sqliteTable('time_entries', {
+  id: text('id').primaryKey(), // UUID
+  taskId: integer('task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+
+  // Time tracking
+  startTime: integer('start_time', { mode: 'timestamp' }).notNull(),
+  endTime: integer('end_time', { mode: 'timestamp' }),
+  duration: integer('duration'), // in minutes, calculated when session ends
+  type: text('type').notNull().default('regular'), // 'focus' | 'regular'
+
+  // Focus session details
+  quote: text('quote'), // motivational quote for focus sessions
+
+  // Timestamps
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 
 // User Preferences Table
@@ -63,5 +88,7 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
+export type TimeEntry = typeof timeEntries.$inferSelect;
+export type NewTimeEntry = typeof timeEntries.$inferInsert;
 export type UserPreferences = typeof userPreferences.$inferSelect;
 export type NewUserPreferences = typeof userPreferences.$inferInsert;

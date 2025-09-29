@@ -242,4 +242,111 @@ tasksRouter.patch('/:id/complete', async (c) => {
   }
 });
 
+// PATCH /api/tasks/:id/focus/start - Start focus session
+tasksRouter.patch('/:id/focus/start', async (c) => {
+  const id = parseInt(c.req.param('id'));
+  const user = c.get('user');
+  const db = createDB(c.env);
+
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
+  }
+
+  try {
+    const [updatedTask] = await db.update(tasks)
+      .set({
+        isInFocus: true,
+        focusStartedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
+      .returning();
+
+    if (!updatedTask) {
+      return c.json({ error: 'Task not found' }, 404);
+    }
+
+    return c.json({ task: updatedTask });
+  } catch (error) {
+    console.error('Start focus session error:', error);
+    return c.json({ error: 'Failed to start focus session' }, 500);
+  }
+});
+
+// PATCH /api/tasks/:id/focus/end - End focus session
+tasksRouter.patch('/:id/focus/end', async (c) => {
+  const id = parseInt(c.req.param('id'));
+  const user = c.get('user');
+  const db = createDB(c.env);
+  const { duration } = await c.req.json();
+
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
+  }
+
+  try {
+    // Get current task to add to existing actualTime
+    const [currentTask] = await db.select()
+      .from(tasks)
+      .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
+      .limit(1);
+
+    if (!currentTask) {
+      return c.json({ error: 'Task not found' }, 404);
+    }
+
+    const [updatedTask] = await db.update(tasks)
+      .set({
+        isInFocus: false,
+        focusStartedAt: null,
+        actualTime: (currentTask.actualTime || 0) + duration,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
+      .returning();
+
+    return c.json({ task: updatedTask });
+  } catch (error) {
+    console.error('End focus session error:', error);
+    return c.json({ error: 'Failed to end focus session' }, 500);
+  }
+});
+
+// POST /api/tasks/:id/time - Add time entry
+tasksRouter.post('/:id/time', async (c) => {
+  const id = parseInt(c.req.param('id'));
+  const user = c.get('user');
+  const db = createDB(c.env);
+  const { duration, type } = await c.req.json();
+
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
+  }
+
+  try {
+    // Get current task to add to existing actualTime
+    const [currentTask] = await db.select()
+      .from(tasks)
+      .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
+      .limit(1);
+
+    if (!currentTask) {
+      return c.json({ error: 'Task not found' }, 404);
+    }
+
+    const [updatedTask] = await db.update(tasks)
+      .set({
+        actualTime: (currentTask.actualTime || 0) + duration,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
+      .returning();
+
+    return c.json({ task: updatedTask });
+  } catch (error) {
+    console.error('Add time entry error:', error);
+    return c.json({ error: 'Failed to add time entry' }, 500);
+  }
+});
+
 export default tasksRouter;

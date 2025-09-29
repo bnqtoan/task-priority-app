@@ -15,6 +15,20 @@ export interface Task {
   createdAt: Date;
   updatedAt: Date;
   completedAt?: Date;
+  // Time tracking fields
+  actualTime?: number; // total time spent in minutes
+  timeEntries?: TimeEntry[];
+  isInFocus?: boolean; // currently in focus mode
+  focusStartedAt?: Date; // when current focus session started
+}
+
+export interface TimeEntry {
+  id: string;
+  taskId: number;
+  startTime: Date;
+  endTime?: Date;
+  duration?: number; // in minutes, calculated when session ends
+  type: 'focus' | 'regular'; // focus mode or regular tracking
 }
 
 export interface User {
@@ -86,4 +100,19 @@ export interface AIRecommendation {
 
 export interface TaskRecommendations {
   [taskId: number]: AIRecommendation;
+}
+
+export interface FocusSession {
+  id: string;
+  taskId: number;
+  startTime: Date;
+  endTime?: Date;
+  duration?: number; // in minutes
+  isActive: boolean;
+  quote?: string; // motivational quote for this session
+}
+
+export interface FocusQuote {
+  text: string;
+  author: string;
 }

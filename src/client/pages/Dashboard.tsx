@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, Clock, Archive, X } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, Clock, Archive, X, Play } from 'lucide-react';
 import { api } from '../lib/api';
 import { taskStorage } from '../../lib/storage';
 import { APP_CONFIG } from '../../utils/config';
 import { DemoNotice } from '../components/DemoNotice';
+import { FocusModeModal } from '../components/FocusModeModal';
 import { calculateICE, getDecisionInfo, getTimeBlockInfo } from '../lib/helpers';
 import { getDecisionRecommendation } from '../../utils/algorithms';
 import type { Task, CreateTaskInput, User, OverviewStats } from '../../utils/types';
@@ -36,6 +37,10 @@ const Dashboard = () => {
   // Debounced update functionality
   const debounceTimeouts = useRef<{ [key: string]: NodeJS.Timeout }>({});
   const [localTaskValues, setLocalTaskValues] = useState<{ [key: string]: any }>({});
+
+  // Focus mode state
+  const [focusTask, setFocusTask] = useState<Task | null>(null);
+  const [isFocusModeOpen, setIsFocusModeOpen] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -203,6 +208,42 @@ const Dashboard = () => {
       delete debounceTimeouts.current[key];
     }, 500); // 500ms delay
   }, [localTaskValues]);
+
+  // Focus mode functions
+  const startFocusSession = async (task: Task) => {
+    try {
+      const updatedTask = await taskStorage.startFocusSession(task.id);
+      setTasks(tasks.map(t => t.id === task.id ? updatedTask : t));
+      setFocusTask(updatedTask);
+      setIsFocusModeOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start focus session');
+    }
+  };
+
+  const endFocusSession = async (duration: number) => {
+    if (!focusTask) return;
+    
+    try {
+      const updatedTask = await taskStorage.endFocusSession(focusTask.id, duration);
+      setTasks(tasks.map(t => t.id === focusTask.id ? updatedTask : t));
+      setFocusTask(null);
+      setIsFocusModeOpen(false);
+      
+      // Refresh stats to include the new time
+      const updatedStats = APP_CONFIG.IS_DEMO
+        ? await taskStorage.getOverviewStats()
+        : await api.getOverview();
+      setStats(updatedStats);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to end focus session');
+    }
+  };
+
+  const closeFocusMode = () => {
+    setIsFocusModeOpen(false);
+    setFocusTask(null);
+  };
 
   // Search and filter tasks
   const searchAndFilterTasks = (tasksList: Task[]) => {
@@ -767,6 +808,13 @@ const Dashboard = () => {
                           {task.status === 'active' && (
                             <>
                               <button
+                                onClick={() => startFocusSession(task)}
+                                className="text-blue-600 hover:text-blue-700 transition p-2 rounded-lg hover:bg-blue-50"
+                                title="Start focus session"
+                              >
+                                <Play size={18} />
+                              </button>
+                              <button
                                 onClick={() => completeTask(task.id)}
                                 className="text-green-600 hover:text-green-700 transition p-2 rounded-lg hover:bg-green-50"
                                 title="Mark as completed"
@@ -951,6 +999,53 @@ const Dashboard = () => {
                               </div>
                             </div>
 
+                            {/* Time Tracking */}
+                            <div className="space-y-4">
+                              <h4 className="font-semibold text-gray-800 mb-3">⏱️ Time Tracking</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Estimated</label>
+                                  <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">
+                                    {task.estimatedTime} min
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Actual Time</label>
+                                  <div className="px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-green-800">
+                                    {task.actualTime || 0} min
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                                  <div className={`px-3 py-2 rounded-lg border text-sm font-medium ${
+                                    task.isInFocus 
+                                      ? 'bg-orange-50 border-orange-200 text-orange-800'
+                                      : 'bg-gray-50 border-gray-200 text-gray-600'
+                                  }`}>
+                                    {task.isInFocus ? '🔥 In Focus' : '⏸️ Idle'}
+                                  </div>
+                                </div>
+                              </div>
+                              {task.actualTime && task.estimatedTime && (
+                                <div className="mt-3">
+                                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                    <span>Progress</span>
+                                    <span>{Math.round((task.actualTime / task.estimatedTime) * 100)}%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div
+                                      className={`h-2 rounded-full transition-all ${
+                                        (task.actualTime / task.estimatedTime) > 1 
+                                          ? 'bg-red-500' 
+                                          : 'bg-blue-500'
+                                      }`}
+                                      style={{ width: `${Math.min((task.actualTime / task.estimatedTime) * 100, 100)}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
                             {/* Description */}
                             <div className="space-y-4">
                               <h4 className="font-semibold text-gray-800 mb-3">📝 Description</h4>
@@ -1037,6 +1132,16 @@ const Dashboard = () => {
           </p>
         </div>
       </div>
+
+      {/* Focus Mode Modal */}
+      {focusTask && (
+        <FocusModeModal
+          task={focusTask}
+          isOpen={isFocusModeOpen}
+          onClose={closeFocusMode}
+          onComplete={endFocusSession}
+        />
+      )}
     </div>
   );
 };

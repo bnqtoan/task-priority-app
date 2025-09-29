@@ -54,6 +54,28 @@ export const api = {
     return response.task;
   },
 
+  // Time tracking
+  startFocusSession: async (taskId: number): Promise<Task> => {
+    const response = await fetchAPI(`/tasks/${taskId}/focus/start`, { method: 'PATCH' });
+    return response.task;
+  },
+
+  endFocusSession: async (taskId: number, duration: number): Promise<Task> => {
+    const response = await fetchAPI(`/tasks/${taskId}/focus/end`, {
+      method: 'PATCH',
+      body: JSON.stringify({ duration })
+    });
+    return response.task;
+  },
+
+  addTimeEntry: async (taskId: number, duration: number, type: 'focus' | 'regular'): Promise<Task> => {
+    const response = await fetchAPI(`/tasks/${taskId}/time`, {
+      method: 'POST',
+      body: JSON.stringify({ duration, type })
+    });
+    return response.task;
+  },
+
   // Preferences
   getPreferences: (): Promise<UserPreferences> => fetchAPI('/preferences'),
 
