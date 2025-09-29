@@ -1,0 +1,13 @@
+{
+  "name": "Task Priority Framework",
+  "description": "A fullstack task prioritization application using ICE scoring methodology",
+  "repository": "https://github.com/bnqtoan/task-priority-app",
+  "deploy": {
+    "environment": {
+      "ACCESS_AUD": {
+        "type": "secret",
+        "description": "Cloudflare Zero Trust Application Audience (AUD) tag for authentication"
+      }
+    }
+  }
+}

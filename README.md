@@ -1,5 +1,7 @@
 # Task Priority Framework - Fullstack Application
 
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bnqtoan/task-priority-app)
+
 A comprehensive task prioritization system combining ICE scoring, time blocking, and the 4D decision framework (DO, DELEGATE, DELAY, DELETE) with 8 AI recommendation algorithms.
 
 ## Features
@@ -57,53 +59,144 @@ npm run dev:server  # Backend on http://localhost:8787
 
 ## Production Deployment
 
-### 1. Set up Cloudflare Access
+### Option 1: One-Click Deploy (Recommended)
 
-1. Go to **Cloudflare Dashboard** → **Zero Trust** → **Access** → **Applications**
-2. Create a new **Self-hosted** application:
-   - **Application name**: Task Priority App
-   - **Subdomain**: task-priority (or your custom domain)
-   - **Domain**: yourdomain.com
-3. Configure **Identity Provider** (OTP via email or GitHub OAuth)
-4. Set up **Access Policy** for your team/users
-5. Copy the **AUD (Audience) tag** from application settings
+Click the deploy button above to automatically deploy to Cloudflare Workers. You'll need to:
 
-### 2. Create Production Database
+1. **Authenticate with Cloudflare** - Log in to your Cloudflare account
+2. **Set up Zero Trust** - Follow the Zero Trust setup instructions below
+3. **Configure Environment Variables** - Add your AUD tag after deployment
+
+### Option 2: Manual Deployment
+
+1. **Clone and Setup**
+   ```bash
+   git clone https://github.com/bnqtoan/task-priority-app
+   cd task-priority-app
+   npm install
+   ```
+
+2. **Configure Cloudflare**
+   ```bash
+   wrangler login
+   wrangler d1 create task-priority-db
+   ```
+
+3. **Update Configuration**
+   - Copy the database ID from the output
+   - Update `wrangler.toml` with your account ID and database ID
+   - Set up Zero Trust (see instructions below)
+
+4. **Deploy**
+   ```bash
+   npm run deploy
+   ```
+
+## Zero Trust Authentication Setup
+
+This application uses Cloudflare Zero Trust for secure authentication. Follow these steps to configure it:
+
+### Step 1: Access Zero Trust Dashboard
+
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. Select your account
+3. Navigate to **Zero Trust** in the left sidebar
+4. If this is your first time, set up a team name (e.g., `your-company-team`)
+
+### Step 2: Create Access Application
+
+1. In Zero Trust dashboard, go to **Access** → **Applications**
+2. Click **Add an application**
+3. Choose **Self-hosted**
+4. Configure the application:
+
+   **Application Configuration:**
+   - **Application name**: `Task Priority App`
+   - **Session Duration**: `24 hours` (or your preference)
+   - **Application domain**: `your-app-name.your-subdomain.workers.dev`
+
+   **Authentication Policy:**
+   - **Policy name**: `Task Priority Access`
+   - **Action**: `Allow`
+   - **Session duration**: `24 hours`
+
+   **Access Rules (Choose one):**
+   
+   **Option A - Email-based access:**
+   - **Include**: `Emails`
+   - Add authorized email addresses (e.g., `your-email@example.com`)
+
+   **Option B - Domain-based access:**
+   - **Include**: `Email domains`
+   - Add your organization's domain (e.g., `@yourcompany.com`)
+
+   **Option C - Everyone with login:**
+   - **Include**: `Everyone`
+   - Note: This allows anyone with a valid login provider
+
+### Step 3: Get Application AUD Tag
+
+1. After creating the application, click on it in the Applications list
+2. Copy the **Application Audience (AUD) Tag**
+3. The AUD tag looks like: `abc123def456ghi789jkl012mno345pqr678stu901vwx234yz`
+
+### Step 4: Configure Your Application
+
+**For One-Click Deploy:**
+1. After deployment, go to your Cloudflare Workers dashboard
+2. Click on your deployed worker
+3. Go to **Settings** → **Variables**
+4. Edit the `ACCESS_AUD` variable and paste your AUD tag
+
+**For Manual Deploy:**
+1. Update `wrangler.toml`:
+   ```toml
+   [vars]
+   ACCESS_AUD = "your-actual-aud-tag-here"
+   ```
+2. Redeploy: `npm run deploy`
+
+### Step 5: Test Authentication
+
+1. Visit your deployed application URL
+2. You should be redirected to Cloudflare Access login
+3. Log in with an authorized account
+4. You'll be redirected back to your application with full access
+
+### Troubleshooting Zero Trust
+
+**"Unauthorized" Error:**
+- Verify the AUD tag is correctly set in your environment variables
+- Check that your email/domain is included in the Access policy
+- Ensure the application domain matches your deployed URL
+
+**Login Loop:**
+- Check that the Access application domain exactly matches your deployed URL
+- Verify the session duration is set appropriately
+
+**Still Having Issues?**
+- Check Cloudflare Zero Trust logs in the dashboard
+- Verify your authentication policy rules
+- Ensure you're using the correct login provider
+
+## Additional Configuration
+
+### Environment Variables
+
+The application uses these environment variables:
+
+- `ACCESS_AUD`: Your Cloudflare Zero Trust Application Audience tag
+- `NODE_ENV`: Set to `development` for local development, `production` for deployment
+
+### Database Management
 
 ```bash
-# Create D1 database in Cloudflare
-npx wrangler d1 create task-priority-db
-
-# Update wrangler.toml with the database_id from the output
-```
-
-### 3. Update Configuration
-
-Edit `wrangler.toml`:
-
-```toml
-[[d1_databases]]
-binding = "DB"
-database_name = "task-priority-db"
-database_id = "your-database-id-here"  # From step 2
-
-[vars]
-ACCESS_AUD = "your-access-aud-tag"  # From step 1
-```
-
-### 4. Deploy
-
-```bash
-# Run migrations on production database
+# Apply migrations to production database
 npm run db:migrate:prod
 
-# Build and deploy
-npm run deploy
+# Open Drizzle Studio to view/edit database
+npm run db:studio
 ```
-
-### 5. Access Your App
-
-Visit your deployed app (e.g., `https://task-priority.yourdomain.com`) and you'll be redirected to Cloudflare Access login.
 
 ## API Endpoints
 
