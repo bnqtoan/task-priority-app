@@ -17,9 +17,18 @@ tasksRouter.use('*', accessMiddleware);
 
 // GET /api/tasks - List all tasks for user
 tasksRouter.get('/', zValidator('query', taskQuerySchema), async (c) => {
+  // For demo mode, return empty array since tasks are stored in localStorage
+  if (c.env.NODE_ENV === 'demo') {
+    return c.json({ tasks: [] });
+  }
+
   const { status = 'active', timeBlock, limit = 50 } = c.req.valid('query');
   const user = c.get('user');
   const db = createDB(c.env);
+
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
+  }
 
   try {
     const conditions = [eq(tasks.userId, user.id)];
@@ -38,7 +47,7 @@ tasksRouter.get('/', zValidator('query', taskQuerySchema), async (c) => {
       .limit(limit)
       .all();
 
-    return c.json(userTasks);
+    return c.json({ tasks: userTasks });
   } catch (error) {
     console.error('Get tasks error:', error);
     return c.json({ error: 'Failed to fetch tasks' }, 500);
@@ -47,9 +56,27 @@ tasksRouter.get('/', zValidator('query', taskQuerySchema), async (c) => {
 
 // POST /api/tasks - Create new task
 tasksRouter.post('/', zValidator('json', createTaskSchema), async (c) => {
+  // For demo mode, return a mock task since tasks are stored in localStorage
+  if (c.env.NODE_ENV === 'demo') {
+    const taskData = c.req.valid('json');
+    const mockTask = {
+      id: Date.now(),
+      ...taskData,
+      userId: 1,
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    return c.json({ task: mockTask }, 201);
+  }
+
   const taskData = c.req.valid('json');
   const user = c.get('user');
   const db = createDB(c.env);
+
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
+  }
 
   try {
     const [newTask] = await db.insert(tasks).values({
@@ -60,7 +87,7 @@ tasksRouter.post('/', zValidator('json', createTaskSchema), async (c) => {
       updatedAt: new Date(),
     }).returning();
 
-    return c.json(newTask, 201);
+    return c.json({ task: newTask }, 201);
   } catch (error) {
     console.error('Create task error:', error);
     return c.json({ error: 'Failed to create task' }, 500);
@@ -70,11 +97,21 @@ tasksRouter.post('/', zValidator('json', createTaskSchema), async (c) => {
 // GET /api/tasks/:id - Get single task
 tasksRouter.get('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
-  const user = c.get('user');
-  const db = createDB(c.env);
 
   if (isNaN(id)) {
     return c.json({ error: 'Invalid task ID' }, 400);
+  }
+
+  // For demo mode, return a mock task
+  if (c.env.NODE_ENV === 'demo') {
+    return c.json({ error: 'Task not found' }, 404);
+  }
+
+  const user = c.get('user');
+  const db = createDB(c.env);
+
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
   }
 
   try {
@@ -97,11 +134,27 @@ tasksRouter.get('/:id', async (c) => {
 tasksRouter.put('/:id', zValidator('json', updateTaskSchema), async (c) => {
   const id = parseInt(c.req.param('id'));
   const updateData = c.req.valid('json');
-  const user = c.get('user');
-  const db = createDB(c.env);
 
   if (isNaN(id)) {
     return c.json({ error: 'Invalid task ID' }, 400);
+  }
+
+  // For demo mode, return success without database operations
+  if (c.env.NODE_ENV === 'demo') {
+    const mockTask = {
+      id,
+      ...updateData,
+      userId: 1,
+      updatedAt: new Date(),
+    };
+    return c.json({ task: mockTask });
+  }
+
+  const user = c.get('user');
+  const db = createDB(c.env);
+
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
   }
 
   try {
@@ -117,7 +170,7 @@ tasksRouter.put('/:id', zValidator('json', updateTaskSchema), async (c) => {
       return c.json({ error: 'Task not found' }, 404);
     }
 
-    return c.json(updatedTask);
+    return c.json({ task: updatedTask });
   } catch (error) {
     console.error('Update task error:', error);
     return c.json({ error: 'Failed to update task' }, 500);

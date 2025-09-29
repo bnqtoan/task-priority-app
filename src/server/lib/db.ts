@@ -10,6 +10,11 @@ export interface Env {
 }
 
 export function createDB(env: Env) {
+  // For demo mode, return null since we use localStorage
+  if (env.NODE_ENV === 'demo') {
+    return null;
+  }
+
   // Use local SQLite for development
   if (env.NODE_ENV === 'development' || !env.DB) {
     const sqlite = new Database('./dev.db');

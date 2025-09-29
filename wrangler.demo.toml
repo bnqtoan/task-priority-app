@@ -12,6 +12,7 @@ directory = "./dist"
 [vars]
 ACCESS_AUD = "demo-mode-no-auth"
 NODE_ENV = "demo"
+DEMO_MODE = "true"
 
 # Development (local D1)
 [dev]

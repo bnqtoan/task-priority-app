@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { X, Download, Upload, RotateCcw, ExternalLink } from 'lucide-react'
-import { APP_CONFIG } from '../utils/config'
-import { exportDemoData, importDemoData, resetDemoData } from '../lib/demo-data'
+import { APP_CONFIG } from '../../utils/config'
+import { exportDemoData, importDemoData, resetDemoData } from '../../lib/demo-data'
 
 export const DemoNotice = () => {
   const [isMinimized, setIsMinimized] = useState(false)

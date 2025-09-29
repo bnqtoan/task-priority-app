@@ -15,7 +15,6 @@ type Variables = {
 
 export const accessMiddleware = createMiddleware<{ Bindings: Env; Variables: Variables }>(async (c, next) => {
   const env = c.env;
-  const db = createDB(env);
 
   // Get headers from Cloudflare Access
   let email = c.req.header('CF-Access-Authenticated-User-Email');
@@ -27,23 +26,52 @@ export const accessMiddleware = createMiddleware<{ Bindings: Env; Variables: Var
     name = 'Dev User';
   }
 
+  // For demo mode, use demo user
+  if (env.NODE_ENV === 'demo' && !email) {
+    email = 'demo@taskpriority.app';
+    name = 'Demo User';
+  }
+
   if (!email) {
     return c.json({ error: 'Unauthorized' }, 401);
   }
 
   try {
-    // Find or create user
-    let user = await db.select().from(users).where(eq(users.email, email)).get();
+    let user: AccessUser;
 
-    if (!user) {
-      // Auto-create user on first access
-      const [newUser] = await db.insert(users).values({
-        email,
-        name: name || email.split('@')[0],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }).returning();
-      user = newUser;
+    if (env.NODE_ENV === 'demo') {
+      // For demo mode, use a static demo user
+      user = {
+        id: 1,
+        email: 'demo@taskpriority.app',
+        name: 'Demo User'
+      };
+    } else {
+      // For production/development, use database
+      const db = createDB(env);
+      if (!db) {
+        throw new Error('Database not available');
+      }
+
+      // Find or create user
+      let dbUser = await db.select().from(users).where(eq(users.email, email)).get();
+
+      if (!dbUser) {
+        // Auto-create user on first access
+        const [newUser] = await db.insert(users).values({
+          email,
+          name: name || email.split('@')[0],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }).returning();
+        dbUser = newUser;
+      }
+
+      user = {
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.name
+      };
     }
 
     // Attach user to context

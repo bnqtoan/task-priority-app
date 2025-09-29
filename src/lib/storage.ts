@@ -1,6 +1,6 @@
 import type { Task, CreateTaskInput, User, UserPreferences, OverviewStats } from '../utils/types'
 import { APP_CONFIG } from '../utils/config'
-import { api } from './api'
+import { api } from '../client/lib/api'
 import { initializeDemoData } from './demo-data'
 
 // Storage interface that both localStorage and API implementations follow
