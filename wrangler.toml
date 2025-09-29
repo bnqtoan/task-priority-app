@@ -1,0 +1,31 @@
+name = "task-priority-app"
+main = "src/server/index.ts"
+compatibility_date = "2025-09-29"
+compatibility_flags = ["nodejs_compat"]
+
+# Assets (Frontend build output)
+[assets]
+directory = "./dist"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "task-priority-db"
+database_id = "your-database-id-here"
+
+# Variables (non-secret)
+[vars]
+ACCESS_AUD = "your-access-aud-tag"
+
+# Development environment
+[env.development]
+vars = { NODE_ENV = "development", ACCESS_AUD = "dev-environment" }
+
+[[env.development.d1_databases]]
+binding = "DB"
+database_name = "task-priority-db-local"
+database_id = "local"
+
+# Development (local D1)
+[dev]
+port = 8787
