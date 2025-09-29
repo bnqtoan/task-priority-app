@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, Clock, Archive, X } from 'lucide-react';
 import { api } from '../lib/api';
-import { calculateICE, getTypeInfo, getDecisionInfo, getTimeBlockInfo } from '../lib/helpers';
+import { calculateICE, getDecisionInfo, getTimeBlockInfo } from '../lib/helpers';
 import { getDecisionRecommendation } from '../../utils/algorithms';
 import type { Task, CreateTaskInput, User, OverviewStats } from '../../utils/types';
 
@@ -564,8 +564,8 @@ const Dashboard = () => {
             <tbody>
               {filteredTasks.map((task, index) => {
                 const iceScore = calculateICE(task);
-                const typeInfo = getTypeInfo(task.type);
-                const timeBlockInfo = getTimeBlockInfo(task.timeBlock);
+                // const typeInfo = getTypeInfo(task.type);
+                // const timeBlockInfo = getTimeBlockInfo(task.timeBlock);
                 const decisionInfo = getDecisionInfo(task.decision);
                 const recommendation = getDecisionRecommendation(task, selectedMethod);
                 const priorityColor = parseFloat(iceScore) >= 8 ? 'bg-green-500' : parseFloat(iceScore) >= 6 ? 'bg-yellow-500' : 'bg-gray-400';

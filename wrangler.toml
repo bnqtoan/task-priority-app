@@ -2,6 +2,7 @@ name = "task-priority-app"
 main = "src/server/index.ts"
 compatibility_date = "2025-09-29"
 compatibility_flags = ["nodejs_compat"]
+account_id = "5cbaf7492795d0e9eafa26240b14389c"
 
 # Assets (Frontend build output)
 [assets]
@@ -11,11 +12,12 @@ directory = "./dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "task-priority-db"
-database_id = "your-database-id-here"
+database_id = "7eafd761-97e9-4404-b70c-1dec57275214"
+migrations_dir = "src/db/migrations"
 
 # Variables (non-secret)
 [vars]
-ACCESS_AUD = "your-access-aud-tag"
+ACCESS_AUD = "2aac6ffc5016ac95306ff002b39481010d0f279ad9ca6b8cc342c33853097162"
 
 # Development environment
 [env.development]
