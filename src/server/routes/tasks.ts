@@ -317,7 +317,7 @@ tasksRouter.post('/:id/time', async (c) => {
   const id = parseInt(c.req.param('id'));
   const user = c.get('user');
   const db = createDB(c.env);
-  const { duration, type } = await c.req.json();
+  const { duration } = await c.req.json();
 
   if (!db) {
     return c.json({ error: 'Database not available' }, 500);

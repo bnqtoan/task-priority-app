@@ -135,7 +135,7 @@ class LocalStorageTaskStorage implements TaskStorage {
     return task
   }
 
-  async addTimeEntry(taskId: number, duration: number, type: 'focus' | 'regular'): Promise<Task> {
+  async addTimeEntry(taskId: number, duration: number, _type: 'focus' | 'regular'): Promise<Task> {
     const tasks = this.getTasksSync()
     const task = tasks.find(t => t.id === taskId)
     if (!task) {
