@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, Clock, Archive, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { taskStorage } from '../../lib/storage';
@@ -33,6 +33,10 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
 
+  // Debounced update functionality
+  const debounceTimeouts = useRef<{ [key: string]: NodeJS.Timeout }>({});
+  const [localTaskValues, setLocalTaskValues] = useState<{ [key: string]: any }>({});
+
   // Load initial data
   useEffect(() => {
     loadData();
@@ -46,7 +50,7 @@ const Dashboard = () => {
         // Use storage abstraction for demo mode
         const [userRes, tasksRes, statsRes] = await Promise.all([
           taskStorage.getCurrentUser(),
-          taskStorage.getTasks(),
+          taskStorage.getTasks({ status: statusFilter }),
           taskStorage.getOverviewStats()
         ]);
         setUser(userRes);
@@ -78,6 +82,15 @@ const Dashboard = () => {
       loadData();
     }
   }, [statusFilter]);
+
+  // Cleanup timeouts on component unmount
+  useEffect(() => {
+    return () => {
+      Object.values(debounceTimeouts.current).forEach(timeout => {
+        if (timeout) clearTimeout(timeout);
+      });
+    };
+  }, []);
 
   const addTask = async () => {
     if (!newTask.name.trim()) return;
@@ -131,18 +144,65 @@ const Dashboard = () => {
 
   const updateTask = async (id: number, field: string, value: any) => {
     try {
-      const updatedTask = await api.updateTask(id, { [field]: value });
+      const updatedTask = APP_CONFIG.IS_DEMO
+        ? await taskStorage.updateTask(id, { [field]: value })
+        : await api.updateTask(id, { [field]: value });
       setTasks(tasks.map(t => t.id === id ? updatedTask : t));
 
       // Refresh stats if the change affects stats
       if (['decision', 'timeBlock', 'type', 'estimatedTime'].includes(field)) {
-        const updatedStats = await api.getOverview();
+        const updatedStats = APP_CONFIG.IS_DEMO
+          ? await taskStorage.getOverviewStats()
+          : await api.getOverview();
         setStats(updatedStats);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update task');
     }
   };
+
+  // Debounced version for text inputs like task name
+  const debouncedUpdateTask = useCallback((id: number, field: string, value: any) => {
+    // Update local state immediately for responsive UI
+    setLocalTaskValues(prev => ({
+      ...prev,
+      [`${id}-${field}`]: value
+    }));
+
+    // Also update the tasks state for immediate visual feedback
+    setTasks(prevTasks => 
+      prevTasks.map(t => t.id === id ? { ...t, [field]: value } : t)
+    );
+
+    // Clear existing timeout for this task-field combination
+    const key = `${id}-${field}`;
+    if (debounceTimeouts.current[key]) {
+      clearTimeout(debounceTimeouts.current[key]);
+    }
+
+    // Set new timeout to update via API after delay
+    debounceTimeouts.current[key] = setTimeout(async () => {
+      try {
+        await updateTask(id, field, value);
+        // Remove from local state since it's now persisted
+        setLocalTaskValues(prev => {
+          const newState = { ...prev };
+          delete newState[key];
+          return newState;
+        });
+      } catch (err) {
+        // On error, revert the optimistic update
+        setTasks(prevTasks => 
+          prevTasks.map(t => t.id === id ? { 
+            ...t, 
+            [field]: localTaskValues[key] || t[field as keyof Task] 
+          } : t)
+        );
+        setError(err instanceof Error ? err.message : 'Failed to update task');
+      }
+      delete debounceTimeouts.current[key];
+    }, 500); // 500ms delay
+  }, [localTaskValues]);
 
   // Search and filter tasks
   const searchAndFilterTasks = (tasksList: Task[]) => {
@@ -192,11 +252,15 @@ const Dashboard = () => {
 
   const completeTask = async (id: number) => {
     try {
-      await api.completeTask(id);
-      setTasks(tasks.map(t => t.id === id ? { ...t, status: 'completed', completedAt: new Date() } : t));
+      const completedTask = APP_CONFIG.IS_DEMO
+        ? await taskStorage.completeTask(id)
+        : await api.completeTask(id);
+      setTasks(tasks.map(t => t.id === id ? completedTask : t));
 
       // Refresh stats
-      const updatedStats = await api.getOverview();
+      const updatedStats = APP_CONFIG.IS_DEMO
+        ? await taskStorage.getOverviewStats()
+        : await api.getOverview();
       setStats(updatedStats);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to complete task');
@@ -208,7 +272,7 @@ const Dashboard = () => {
       if (APP_CONFIG.IS_DEMO) {
         // For demo, we'll just mark as completed since we don't have archived status
         await taskStorage.completeTask(id);
-        setTasks(tasks.map(t => t.id === id ? { ...t, isCompleted: true } : t));
+        setTasks(tasks.map(t => t.id === id ? { ...t, status: 'completed', completedAt: new Date() } : t));
       } else {
         await api.updateTask(id, { status: 'archived' });
         setTasks(tasks.map(t => t.id === id ? { ...t, status: 'archived' } : t));
@@ -227,9 +291,9 @@ const Dashboard = () => {
   const reactivateTask = async (id: number) => {
     try {
       if (APP_CONFIG.IS_DEMO) {
-        // For demo, we'll update the task to mark as not completed
-        await taskStorage.updateTask(id, { isCompleted: false });
-        setTasks(tasks.map(t => t.id === id ? { ...t, isCompleted: false } : t));
+        // For demo, we'll update the task to mark as active
+        await taskStorage.updateTask(id, { status: 'active', completedAt: undefined });
+        setTasks(tasks.map(t => t.id === id ? { ...t, status: 'active', completedAt: undefined } : t));
       } else {
         await api.updateTask(id, { status: 'active' });
         setTasks(tasks.map(t => t.id === id ? { ...t, status: 'active', completedAt: undefined } : t));
@@ -639,7 +703,7 @@ const Dashboard = () => {
                             <input
                               type="text"
                               value={task.name}
-                              onChange={(e) => updateTask(task.id, 'name', e.target.value)}
+                              onChange={(e) => debouncedUpdateTask(task.id, 'name', e.target.value)}
                               className={`flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 font-medium ${
                                 task.status === 'completed' ? 'line-through text-gray-500' : ''
                               }`}

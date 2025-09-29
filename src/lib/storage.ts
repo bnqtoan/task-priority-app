@@ -6,19 +6,19 @@ import { initializeDemoData } from './demo-data'
 // Storage interface that both localStorage and API implementations follow
 interface TaskStorage {
   // Tasks
-  getTasks(): Promise<Task[]>
+  getTasks(params?: { status?: string; timeBlock?: string; limit?: number }): Promise<Task[]>
   createTask(task: CreateTaskInput): Promise<Task>
   updateTask(id: number, task: Partial<Task>): Promise<Task>
   deleteTask(id: number): Promise<void>
   completeTask(id: number): Promise<Task>
-  
+
   // User
   getCurrentUser(): Promise<User>
-  
+
   // Preferences  
   getPreferences(): Promise<UserPreferences>
   updatePreferences(preferences: Partial<UserPreferences>): Promise<UserPreferences>
-  
+
   // Stats
   getOverviewStats(): Promise<OverviewStats>
 }
@@ -43,8 +43,24 @@ class LocalStorageTaskStorage implements TaskStorage {
     localStorage.setItem('demo-tasks', JSON.stringify(tasks))
   }
 
-  async getTasks(): Promise<Task[]> {
-    return this.getTasksSync()
+  async getTasks(params?: { status?: string; timeBlock?: string; limit?: number }): Promise<Task[]> {
+    let tasks = this.getTasksSync()
+
+    // Apply filters if provided
+    if (params?.status) {
+      tasks = tasks.filter(task => task.status === params.status)
+    }
+
+    if (params?.timeBlock && params.timeBlock !== 'all') {
+      tasks = tasks.filter(task => task.timeBlock === params.timeBlock)
+    }
+
+    // Apply limit if provided
+    if (params?.limit && params.limit > 0) {
+      tasks = tasks.slice(0, params.limit)
+    }
+
+    return tasks
   }
 
   async createTask(taskInput: CreateTaskInput): Promise<Task> {
@@ -53,11 +69,12 @@ class LocalStorageTaskStorage implements TaskStorage {
       ...taskInput,
       id: this.getNextId(),
       userId: APP_CONFIG.DEMO_USER.id,
-      isCompleted: false,
+      notes: taskInput.notes || null,
+      status: 'active',
       createdAt: new Date(),
       updatedAt: new Date()
     }
-    
+
     tasks.push(newTask)
     this.saveTasksSync(tasks)
     return newTask
@@ -66,17 +83,17 @@ class LocalStorageTaskStorage implements TaskStorage {
   async updateTask(id: number, taskUpdate: Partial<Task>): Promise<Task> {
     const tasks = this.getTasksSync()
     const index = tasks.findIndex(t => t.id === id)
-    
+
     if (index === -1) {
       throw new Error(`Task with id ${id} not found`)
     }
-    
+
     const updatedTask = {
       ...tasks[index],
       ...taskUpdate,
       updatedAt: new Date()
     }
-    
+
     tasks[index] = updatedTask
     this.saveTasksSync(tasks)
     return updatedTask
@@ -85,16 +102,16 @@ class LocalStorageTaskStorage implements TaskStorage {
   async deleteTask(id: number): Promise<void> {
     const tasks = this.getTasksSync()
     const filteredTasks = tasks.filter(t => t.id !== id)
-    
+
     if (filteredTasks.length === tasks.length) {
       throw new Error(`Task with id ${id} not found`)
     }
-    
+
     this.saveTasksSync(filteredTasks)
   }
 
   async completeTask(id: number): Promise<Task> {
-    return this.updateTask(id, { isCompleted: true })
+    return this.updateTask(id, { status: 'completed', completedAt: new Date() })
   }
 
   async getCurrentUser(): Promise<User> {
@@ -120,115 +137,108 @@ class LocalStorageTaskStorage implements TaskStorage {
       ...preferencesUpdate,
       updatedAt: new Date()
     }
-    
+
     localStorage.setItem('demo-preferences', JSON.stringify(updatedPrefs))
     return updatedPrefs
   }
 
   async getOverviewStats(): Promise<OverviewStats> {
     const tasks = this.getTasksSync()
-    
+
     // Calculate stats from tasks
     const totalTasks = tasks.length
-    const completedTasks = tasks.filter(t => t.isCompleted).length
-    const pendingTasks = totalTasks - completedTasks
-    
-    // Decision breakdown
-    const doTasks = tasks.filter(t => t.decision === 'DO').length
-    const delegateTasks = tasks.filter(t => t.decision === 'DELEGATE').length
-    const delayTasks = tasks.filter(t => t.decision === 'DELAY').length
-    const deleteTasks = tasks.filter(t => t.decision === 'DELETE').length
-    
-    // Time block breakdown
-    const deepWorkTasks = tasks.filter(t => t.timeBlock === 'Deep Work').length
-    const collaborativeTasks = tasks.filter(t => t.timeBlock === 'Collaborative').length
-    const quickWinTasks = tasks.filter(t => t.timeBlock === 'Quick Wins').length
-    const systematicTasks = tasks.filter(t => t.timeBlock === 'Systematic').length
-    
-    // Type breakdown
-    const featureTasks = tasks.filter(t => t.type === 'feature').length
-    const bugTasks = tasks.filter(t => t.type === 'bug').length
-    const improvementTasks = tasks.filter(t => t.type === 'improvement').length
-    const researchTasks = tasks.filter(t => t.type === 'research').length
-    const documentationTasks = tasks.filter(t => t.type === 'documentation').length
-    const otherTasks = tasks.filter(t => !['feature', 'bug', 'improvement', 'research', 'documentation'].includes(t.type)).length
-    
+    const totalTime = tasks.reduce((sum, task) => sum + (task.estimatedTime || 0), 0)
+
+    // Decision breakdown with count and time
+    const doTasks = tasks.filter(t => t.decision === 'do')
+    const delegateTasks = tasks.filter(t => t.decision === 'delegate')
+    const delayTasks = tasks.filter(t => t.decision === 'delay')
+    const deleteTasks = tasks.filter(t => t.decision === 'delete')
+
+    // Time block breakdown with count and time
+    const deepTasks = tasks.filter(t => t.timeBlock === 'deep')
+    const collaborativeTasks = tasks.filter(t => t.timeBlock === 'collaborative')
+    const quickTasks = tasks.filter(t => t.timeBlock === 'quick')
+    const systematicTasks = tasks.filter(t => t.timeBlock === 'systematic')
+
+    // Type breakdown with count and time
+    const revenueTasks = tasks.filter(t => t.type === 'revenue')
+    const growthTasks = tasks.filter(t => t.type === 'growth')
+    const operationsTasks = tasks.filter(t => t.type === 'operations')
+    const strategicTasks = tasks.filter(t => t.type === 'strategic')
+    const personalTasks = tasks.filter(t => t.type === 'personal')
+
+    const calculateStats = (taskList: Task[]) => ({
+      count: taskList.length,
+      time: taskList.reduce((sum, task) => sum + (task.estimatedTime || 0), 0)
+    })
+
     return {
+      decisions: {
+        do: calculateStats(doTasks),
+        delegate: calculateStats(delegateTasks),
+        delay: calculateStats(delayTasks),
+        delete: calculateStats(deleteTasks)
+      },
+      timeBlocks: {
+        deep: calculateStats(deepTasks),
+        collaborative: calculateStats(collaborativeTasks),
+        quick: calculateStats(quickTasks),
+        systematic: calculateStats(systematicTasks)
+      },
+      types: {
+        revenue: calculateStats(revenueTasks),
+        growth: calculateStats(growthTasks),
+        operations: calculateStats(operationsTasks),
+        strategic: calculateStats(strategicTasks),
+        personal: calculateStats(personalTasks)
+      },
       totalTasks,
-      completedTasks,
-      pendingTasks,
-      byDecision: {
-        do: doTasks,
-        delegate: delegateTasks,
-        delay: delayTasks,
-        delete: deleteTasks
-      },
-      byTimeBlock: {
-        deepWork: deepWorkTasks,
-        collaborative: collaborativeTasks,
-        quickWins: quickWinTasks,
-        systematic: systematicTasks
-      },
-      byType: {
-        feature: featureTasks,
-        bug: bugTasks,
-        improvement: improvementTasks,
-        research: researchTasks,
-        documentation: documentationTasks,
-        other: otherTasks
-      }
+      totalTime
     }
   }
 }
 
 class ApiTaskStorage implements TaskStorage {
-  async getTasks(): Promise<Task[]> {
-    const response = await api.get('/tasks')
-    return response.tasks
+  async getTasks(params?: { status?: string; timeBlock?: string; limit?: number }): Promise<Task[]> {
+    return api.getTasks(params)
   }
 
   async createTask(task: CreateTaskInput): Promise<Task> {
-    const response = await api.post('/tasks', task)
-    return response.task
+    return api.createTask(task)
   }
 
   async updateTask(id: number, task: Partial<Task>): Promise<Task> {
-    const response = await api.put(`/tasks/${id}`, task)
-    return response.task
+    return api.updateTask(id, task)
   }
 
   async deleteTask(id: number): Promise<void> {
-    await api.delete(`/tasks/${id}`)
+    await api.deleteTask(id)
   }
 
   async completeTask(id: number): Promise<Task> {
-    const response = await api.patch(`/tasks/${id}/complete`)
-    return response.task
+    return api.completeTask(id)
   }
 
   async getCurrentUser(): Promise<User> {
-    const response = await api.get('/auth/me')
-    return response.user
+    return api.getMe()
   }
 
   async getPreferences(): Promise<UserPreferences> {
-    const response = await api.get('/preferences')
-    return response.preferences
+    return api.getPreferences()
   }
 
   async updatePreferences(preferences: Partial<UserPreferences>): Promise<UserPreferences> {
-    const response = await api.put('/preferences', preferences)
-    return response.preferences
+    return api.updatePreferences(preferences)
   }
 
   async getOverviewStats(): Promise<OverviewStats> {
-    const response = await api.get('/stats/overview')
-    return response.stats
+    return api.getOverview()
   }
 }
 
 // Export the appropriate storage implementation based on configuration
-export const taskStorage: TaskStorage = APP_CONFIG.IS_DEMO 
+export const taskStorage: TaskStorage = APP_CONFIG.IS_DEMO
   ? new LocalStorageTaskStorage()
   : new ApiTaskStorage()
 

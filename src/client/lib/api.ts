@@ -25,27 +25,34 @@ export const api = {
   getMe: (): Promise<User> => fetchAPI('/auth/me'),
 
   // Tasks
-  getTasks: (params?: { status?: string; timeBlock?: string; limit?: number }): Promise<Task[]> => {
+  getTasks: async (params?: { status?: string; timeBlock?: string; limit?: number }): Promise<Task[]> => {
     const query = new URLSearchParams();
     if (params?.status) query.append('status', params.status);
     if (params?.timeBlock && params.timeBlock !== 'all') query.append('timeBlock', params.timeBlock);
     if (params?.limit) query.append('limit', params.limit.toString());
 
     const queryString = query.toString();
-    return fetchAPI(`/tasks${queryString ? `?${queryString}` : ''}`);
+    const response = await fetchAPI(`/tasks${queryString ? `?${queryString}` : ''}`);
+    return response.tasks;
   },
 
-  createTask: (task: CreateTaskInput): Promise<Task> =>
-    fetchAPI('/tasks', { method: 'POST', body: JSON.stringify(task) }),
+  createTask: async (task: CreateTaskInput): Promise<Task> => {
+    const response = await fetchAPI('/tasks', { method: 'POST', body: JSON.stringify(task) });
+    return response.task;
+  },
 
-  updateTask: (id: number, task: UpdateTaskInput): Promise<Task> =>
-    fetchAPI(`/tasks/${id}`, { method: 'PUT', body: JSON.stringify(task) }),
+  updateTask: async (id: number, task: UpdateTaskInput): Promise<Task> => {
+    const response = await fetchAPI(`/tasks/${id}`, { method: 'PUT', body: JSON.stringify(task) });
+    return response.task;
+  },
 
   deleteTask: (id: number): Promise<{ success: boolean }> =>
     fetchAPI(`/tasks/${id}`, { method: 'DELETE' }),
 
-  completeTask: (id: number): Promise<Task> =>
-    fetchAPI(`/tasks/${id}/complete`, { method: 'PATCH' }),
+  completeTask: async (id: number): Promise<Task> => {
+    const response = await fetchAPI(`/tasks/${id}/complete`, { method: 'PATCH' });
+    return response.task;
+  },
 
   // Preferences
   getPreferences: (): Promise<UserPreferences> => fetchAPI('/preferences'),

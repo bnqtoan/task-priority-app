@@ -22,6 +22,10 @@ statsRouter.get('/overview', async (c) => {
   const user = c.get('user');
   const db = createDB(c.env);
 
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
+  }
+
   try {
     const userTasks = await db.select().from(tasks)
       .where(eq(tasks.userId, user.id))
@@ -97,6 +101,10 @@ statsRouter.get('/recommendations', zValidator('query', recommendationQuerySchem
   const { method } = c.req.valid('query');
   const user = c.get('user');
   const db = createDB(c.env);
+
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
+  }
 
   try {
     const userTasks = await db.select().from(tasks)

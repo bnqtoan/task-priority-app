@@ -187,6 +187,10 @@ tasksRouter.delete('/:id', async (c) => {
     return c.json({ error: 'Invalid task ID' }, 400);
   }
 
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
+  }
+
   try {
     const [deletedTask] = await db.delete(tasks)
       .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
@@ -213,6 +217,10 @@ tasksRouter.patch('/:id/complete', async (c) => {
     return c.json({ error: 'Invalid task ID' }, 400);
   }
 
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
+  }
+
   try {
     const [completedTask] = await db.update(tasks)
       .set({
@@ -227,7 +235,7 @@ tasksRouter.patch('/:id/complete', async (c) => {
       return c.json({ error: 'Task not found' }, 404);
     }
 
-    return c.json(completedTask);
+    return c.json({ task: completedTask });
   } catch (error) {
     console.error('Complete task error:', error);
     return c.json({ error: 'Failed to complete task' }, 500);

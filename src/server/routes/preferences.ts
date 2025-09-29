@@ -20,6 +20,10 @@ preferencesRouter.get('/', async (c) => {
   const user = c.get('user');
   const db = createDB(c.env);
 
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
+  }
+
   try {
     let preferences = await db.select().from(userPreferences)
       .where(eq(userPreferences.userId, user.id))
@@ -49,6 +53,10 @@ preferencesRouter.put('/', zValidator('json', updatePreferencesSchema), async (c
   const updateData = c.req.valid('json');
   const user = c.get('user');
   const db = createDB(c.env);
+
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
+  }
 
   try {
     // Check if preferences exist
