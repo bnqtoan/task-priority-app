@@ -15,6 +15,7 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete }: FocusModeM
   const [quote] = useState<FocusQuote>(getRandomFocusQuote());
   const [isPaused, setIsPaused] = useState(false);
   const [pausedTime, setPausedTime] = useState(0);
+  const [pauseStartTime, setPauseStartTime] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!isOpen || isPaused) return;
@@ -41,8 +42,15 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete }: FocusModeM
 
   const handlePause = () => {
     if (isPaused) {
-      // Resume - add the paused time to total paused time
-      setPausedTime(prev => prev + (new Date().getTime() - startTime.getTime()) / 1000 - elapsedTime);
+      // Resume - add the paused duration to total paused time
+      if (pauseStartTime) {
+        const pauseDuration = Math.floor((new Date().getTime() - pauseStartTime.getTime()) / 1000);
+        setPausedTime(prev => prev + pauseDuration);
+        setPauseStartTime(null);
+      }
+    } else {
+      // Pause - record when the pause started
+      setPauseStartTime(new Date());
     }
     setIsPaused(!isPaused);
   };
