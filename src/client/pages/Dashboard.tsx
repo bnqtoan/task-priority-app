@@ -42,6 +42,9 @@ const Dashboard = () => {
   const [focusTask, setFocusTask] = useState<Task | null>(null);
   const [isFocusModeOpen, setIsFocusModeOpen] = useState(false);
 
+  // Celebration effect state
+  const [showCelebration, setShowCelebration] = useState(false);
+
   // Load initial data
   useEffect(() => {
     loadData();
@@ -321,6 +324,10 @@ const Dashboard = () => {
         ? await taskStorage.completeTask(id)
         : await api.completeTask(id);
       setTasks(tasks.map(t => t.id === id ? completedTask : t));
+
+      // Show celebration effect
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 3000);
 
       // Refresh stats
       const updatedStats = APP_CONFIG.IS_DEMO
@@ -1166,6 +1173,61 @@ const Dashboard = () => {
           onComplete={endFocusSession}
         />
       )}
+
+      {/* Celebration Effect */}
+      {showCelebration && (
+        <div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center">
+          {/* Confetti-like particles */}
+          <div className="absolute inset-0">
+            {[...Array(50)].map((_, i) => {
+              const delay = Math.random() * 0.5;
+              const duration = 2 + Math.random() * 1;
+              const xOffset = (Math.random() - 0.5) * 100;
+              const rotation = Math.random() * 360;
+              const colors = ['bg-yellow-400', 'bg-green-400', 'bg-blue-400', 'bg-purple-400', 'bg-pink-400', 'bg-red-400'];
+              const color = colors[Math.floor(Math.random() * colors.length)];
+
+              return (
+                <div
+                  key={i}
+                  className={`absolute ${color} rounded-full`}
+                  style={{
+                    left: '50%',
+                    top: '50%',
+                    width: `${4 + Math.random() * 8}px`,
+                    height: `${4 + Math.random() * 8}px`,
+                    animation: `celebration-fall ${duration}s ease-out ${delay}s forwards`,
+                    transform: `translateX(${xOffset}vw) rotate(${rotation}deg)`,
+                    opacity: 0.8
+                  }}
+                />
+              );
+            })}
+          </div>
+
+          {/* Success message */}
+          <div className="relative bg-green-500 text-white px-8 py-6 rounded-2xl shadow-2xl transform animate-bounce">
+            <div className="text-center">
+              <div className="text-5xl mb-3">🎉</div>
+              <div className="text-2xl font-bold mb-2">Task Completed!</div>
+              <div className="text-sm opacity-90">Great job! Keep up the momentum!</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes celebration-fall {
+          0% {
+            transform: translateY(0) translateX(0) rotate(0deg) scale(1);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(100vh) translateX(var(--x-offset, 0)) rotate(720deg) scale(0.5);
+            opacity: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 };
