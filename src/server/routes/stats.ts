@@ -19,6 +19,34 @@ statsRouter.use('*', accessMiddleware);
 
 // GET /api/stats/overview - Get overview stats
 statsRouter.get('/overview', async (c) => {
+  // For demo mode, return empty stats since data is in localStorage
+  if (c.env.NODE_ENV === 'demo') {
+    const emptyStats: OverviewStats = {
+      decisions: {
+        do: { count: 0, time: 0 },
+        delegate: { count: 0, time: 0 },
+        delay: { count: 0, time: 0 },
+        delete: { count: 0, time: 0 },
+      },
+      timeBlocks: {
+        deep: { count: 0, time: 0 },
+        collaborative: { count: 0, time: 0 },
+        quick: { count: 0, time: 0 },
+        systematic: { count: 0, time: 0 },
+      },
+      types: {
+        revenue: { count: 0, time: 0 },
+        growth: { count: 0, time: 0 },
+        operations: { count: 0, time: 0 },
+        strategic: { count: 0, time: 0 },
+        personal: { count: 0, time: 0 },
+      },
+      totalTasks: 0,
+      totalTime: 0,
+    };
+    return c.json(emptyStats);
+  }
+
   const user = c.get('user');
   const db = createDB(c.env);
 
@@ -98,6 +126,12 @@ statsRouter.get('/overview', async (c) => {
 
 // GET /api/stats/recommendations - Get AI recommendations for all tasks
 statsRouter.get('/recommendations', zValidator('query', recommendationQuerySchema), async (c) => {
+  // For demo mode, return empty recommendations since data is in localStorage
+  if (c.env.NODE_ENV === 'demo') {
+    const emptyRecommendations: TaskRecommendations = {};
+    return c.json(emptyRecommendations);
+  }
+
   const { method } = c.req.valid('query');
   const user = c.get('user');
   const db = createDB(c.env);

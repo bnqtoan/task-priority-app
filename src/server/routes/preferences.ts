@@ -17,6 +17,18 @@ preferencesRouter.use('*', accessMiddleware);
 
 // GET /api/preferences - Get user preferences
 preferencesRouter.get('/', async (c) => {
+  // For demo mode, return default preferences
+  if (c.env.NODE_ENV === 'demo') {
+    return c.json({
+      id: 1,
+      userId: 1,
+      preferredMethod: 'hybrid',
+      defaultTimeBlock: 'all',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+
   const user = c.get('user');
   const db = createDB(c.env);
 
@@ -51,6 +63,19 @@ preferencesRouter.get('/', async (c) => {
 // PUT /api/preferences - Update user preferences
 preferencesRouter.put('/', zValidator('json', updatePreferencesSchema), async (c) => {
   const updateData = c.req.valid('json');
+  
+  // For demo mode, return updated preferences without saving to database
+  if (c.env.NODE_ENV === 'demo') {
+    return c.json({
+      id: 1,
+      userId: 1,
+      preferredMethod: updateData.preferredMethod || 'hybrid',
+      defaultTimeBlock: updateData.defaultTimeBlock || 'all',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+
   const user = c.get('user');
   const db = createDB(c.env);
 

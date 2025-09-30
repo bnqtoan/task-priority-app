@@ -180,12 +180,18 @@ tasksRouter.put('/:id', zValidator('json', updateTaskSchema), async (c) => {
 // DELETE /api/tasks/:id - Delete task
 tasksRouter.delete('/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
-  const user = c.get('user');
-  const db = createDB(c.env);
 
   if (isNaN(id)) {
     return c.json({ error: 'Invalid task ID' }, 400);
   }
+
+  // For demo mode, return success response
+  if (c.env.NODE_ENV === 'demo') {
+    return c.json({ success: true });
+  }
+
+  const user = c.get('user');
+  const db = createDB(c.env);
 
   if (!db) {
     return c.json({ error: 'Database not available' }, 500);
@@ -210,12 +216,24 @@ tasksRouter.delete('/:id', async (c) => {
 // PATCH /api/tasks/:id/complete - Mark task as completed
 tasksRouter.patch('/:id/complete', async (c) => {
   const id = parseInt(c.req.param('id'));
-  const user = c.get('user');
-  const db = createDB(c.env);
 
   if (isNaN(id)) {
     return c.json({ error: 'Invalid task ID' }, 400);
   }
+
+  // For demo mode, return mock completed task
+  if (c.env.NODE_ENV === 'demo') {
+    const mockTask = {
+      id,
+      status: 'completed',
+      completedAt: new Date(),
+      updatedAt: new Date(),
+    };
+    return c.json({ task: mockTask });
+  }
+
+  const user = c.get('user');
+  const db = createDB(c.env);
 
   if (!db) {
     return c.json({ error: 'Database not available' }, 500);
@@ -244,6 +262,17 @@ tasksRouter.patch('/:id/complete', async (c) => {
 
 // PATCH /api/tasks/:id/focus/start - Start focus session
 tasksRouter.patch('/:id/focus/start', async (c) => {
+  // For demo mode, return a mock response since data is in localStorage
+  if (c.env.NODE_ENV === 'demo') {
+    return c.json({ 
+      task: { 
+        id: parseInt(c.req.param('id')), 
+        isInFocus: true, 
+        focusStartedAt: new Date() 
+      } 
+    });
+  }
+
   const id = parseInt(c.req.param('id'));
   const user = c.get('user');
   const db = createDB(c.env);
@@ -275,6 +304,19 @@ tasksRouter.patch('/:id/focus/start', async (c) => {
 
 // PATCH /api/tasks/:id/focus/end - End focus session
 tasksRouter.patch('/:id/focus/end', async (c) => {
+  // For demo mode, return a mock response since data is in localStorage
+  if (c.env.NODE_ENV === 'demo') {
+    const { duration } = await c.req.json();
+    return c.json({ 
+      task: { 
+        id: parseInt(c.req.param('id')), 
+        isInFocus: false, 
+        focusStartedAt: null,
+        actualTime: duration 
+      } 
+    });
+  }
+
   const id = parseInt(c.req.param('id'));
   const user = c.get('user');
   const db = createDB(c.env);
@@ -314,6 +356,17 @@ tasksRouter.patch('/:id/focus/end', async (c) => {
 
 // POST /api/tasks/:id/time - Add time entry
 tasksRouter.post('/:id/time', async (c) => {
+  // For demo mode, return a mock response since data is in localStorage
+  if (c.env.NODE_ENV === 'demo') {
+    const { duration } = await c.req.json();
+    return c.json({ 
+      task: { 
+        id: parseInt(c.req.param('id')), 
+        actualTime: duration 
+      } 
+    });
+  }
+
   const id = parseInt(c.req.param('id'));
   const user = c.get('user');
   const db = createDB(c.env);

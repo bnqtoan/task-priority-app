@@ -12,11 +12,33 @@ const getEnvVar = (name: string): string | undefined => {
   return undefined;
 };
 
+// Detect demo mode based on environment variables or URL
+const isDemoMode = (): boolean => {
+  // Check environment variables first (for local development)
+  const viteDemo = getEnvVar('VITE_DEMO_MODE') === 'true';
+  const serverDemo = getEnvVar('DEMO_MODE') === 'true';
+  
+  if (viteDemo || serverDemo) {
+    console.log('Demo mode detected via environment variables:', { viteDemo, serverDemo });
+    return true;
+  }
+  
+  // Check URL hostname for demo deployment
+  if (typeof window !== 'undefined') {
+    const isDemo = window.location.hostname.includes('task-priority-demo');
+    console.log('Demo mode hostname check:', window.location.hostname, 'isDemo:', isDemo);
+    return isDemo;
+  }
+  
+  console.log('Demo mode: false (no window context)');
+  return false;
+};
+
 // Configuration for demo vs production mode
 export const APP_CONFIG = {
-  IS_DEMO: getEnvVar('VITE_DEMO_MODE') === 'true',
-  STORAGE_TYPE: getEnvVar('VITE_DEMO_MODE') === 'true' ? 'localStorage' : 'database',
-  AUTH_ENABLED: getEnvVar('VITE_DEMO_MODE') !== 'true',
+  IS_DEMO: isDemoMode(),
+  STORAGE_TYPE: isDemoMode() ? 'localStorage' : 'database',
+  AUTH_ENABLED: !isDemoMode(),
   DEMO_USER: {
     id: 1,
     email: 'demo@taskpriority.app',

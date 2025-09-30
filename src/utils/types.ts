@@ -39,11 +39,19 @@ export interface User {
   updatedAt: Date;
 }
 
+export interface ICEWeights {
+  impact: number;    // 0-100, percentage weight
+  confidence: number; // 0-100, percentage weight
+  ease: number;      // 0-100, percentage weight
+  // Total should always equal 100
+}
+
 export interface UserPreferences {
   id: number;
   userId: number;
   preferredMethod: string;
   defaultTimeBlock?: string;
+  iceWeights?: ICEWeights; // Custom ICE weights
   createdAt: Date;
   updatedAt: Date;
 }
@@ -67,6 +75,7 @@ export interface UpdateTaskInput extends Partial<CreateTaskInput> {
 export interface UpdatePreferencesInput {
   preferredMethod?: string;
   defaultTimeBlock?: string;
+  iceWeights?: ICEWeights;
 }
 
 export interface OverviewStats {

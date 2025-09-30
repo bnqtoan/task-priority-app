@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, Clock, Archive, X, Play } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, Clock, Archive, X, Play, Settings } from 'lucide-react';
 import { api } from '../lib/api';
 import { taskStorage } from '../../lib/storage';
 import { APP_CONFIG } from '../../utils/config';
 import { DemoNotice } from '../components/DemoNotice';
 import { FocusModeModal } from '../components/FocusModeModal';
-import { calculateICE, getDecisionInfo, getTimeBlockInfo } from '../lib/helpers';
+import { ICEWeightsSettings } from '../components/ICEWeightsSettings';
+import { calculateICE, calculateWeightedICE, getDecisionInfo, getTimeBlockInfo, DEFAULT_ICE_WEIGHTS } from '../lib/helpers';
 import { getDecisionRecommendation } from '../../utils/algorithms';
-import type { Task, CreateTaskInput, User, OverviewStats } from '../../utils/types';
+import type { Task, CreateTaskInput, User, OverviewStats, ICEWeights } from '../../utils/types';
 
 const Dashboard = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -44,6 +45,11 @@ const Dashboard = () => {
 
   // Celebration effect state
   const [showCelebration, setShowCelebration] = useState(false);
+
+  // ICE weights state
+  const [iceWeights, setIceWeights] = useState<ICEWeights>(DEFAULT_ICE_WEIGHTS);
+  const [showWeightsSettings, setShowWeightsSettings] = useState(false);
+  const [useWeightedScoring, setUseWeightedScoring] = useState(true);
 
   // Load initial data
   useEffect(() => {
@@ -295,8 +301,38 @@ const Dashboard = () => {
     return filtered;
   };
 
-  const sortedTasks = [...tasks].sort((a, b) => parseFloat(calculateICE(b)) - parseFloat(calculateICE(a)));
+  // Calculate ICE scores based on user preference
+  const getTaskScore = (task: Task) => {
+    return useWeightedScoring
+      ? parseFloat(calculateWeightedICE(task, iceWeights))
+      : parseFloat(calculateICE(task));
+  };
+
+  const sortedTasks = [...tasks].sort((a, b) => getTaskScore(b) - getTaskScore(a));
   const filteredTasks = searchAndFilterTasks(sortedTasks);
+
+  const handleSaveWeights = (newWeights: ICEWeights) => {
+    setIceWeights(newWeights);
+    // Save to localStorage for persistence
+    localStorage.setItem('iceWeights', JSON.stringify(newWeights));
+  };
+
+  // Load saved weights on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('iceWeights');
+    if (saved) {
+      try {
+        setIceWeights(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to parse saved weights:', e);
+      }
+    }
+
+    const savedUseWeighted = localStorage.getItem('useWeightedScoring');
+    if (savedUseWeighted !== null) {
+      setUseWeightedScoring(savedUseWeighted === 'true');
+    }
+  }, []);
 
   const getDecisionStats = (decision: string) => {
     if (!stats) return { count: 0, time: 0 };
@@ -420,11 +456,25 @@ const Dashboard = () => {
   return (
     <div className="w-full max-w-7xl mx-auto p-6 bg-gray-50">
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Task Priority Framework</h1>
-        <p className="text-gray-600 mb-4">ICE Score + Time Blocking + 4D Decision Framework</p>
-        {user && (
-          <p className="text-sm text-gray-500 mb-4">Welcome, {user.name || user.email}</p>
-        )}
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Task Priority Framework</h1>
+            <p className="text-gray-600 mb-4">
+              {useWeightedScoring ? 'Weighted' : 'Simple'} ICE Score + Time Blocking + 4D Decision Framework
+            </p>
+            {user && (
+              <p className="text-sm text-gray-500 mb-4">Welcome, {user.name || user.email}</p>
+            )}
+          </div>
+          <button
+            onClick={() => setShowWeightsSettings(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            title="Configure ICE Weights"
+          >
+            <Settings size={18} />
+            <span className="hidden sm:inline">ICE Weights</span>
+          </button>
+        </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div className="bg-gray-50 p-3 rounded-lg">
@@ -441,7 +491,11 @@ const Dashboard = () => {
           </div>
           <div className="bg-gray-50 p-3 rounded-lg">
             <span className="font-semibold text-gray-700">ICE Score:</span>
-            <p className="text-gray-600 text-xs mt-1">Điểm ưu tiên = Trung bình 3 yếu tố</p>
+            <p className="text-gray-600 text-xs mt-1">
+              {useWeightedScoring
+                ? `Weighted: I(${iceWeights.impact}%) + C(${iceWeights.confidence}%) + E(${iceWeights.ease}%)`
+                : 'Simple average of 3 factors'}
+            </p>
           </div>
         </div>
       </div>
@@ -744,9 +798,9 @@ const Dashboard = () => {
             </thead>
             <tbody>
               {filteredTasks.map((task, index) => {
-                const iceScore = calculateICE(task);
-                // const typeInfo = getTypeInfo(task.type);
-                // const timeBlockInfo = getTimeBlockInfo(task.timeBlock);
+                const iceScore = useWeightedScoring
+                  ? calculateWeightedICE(task, iceWeights)
+                  : calculateICE(task);
                 const decisionInfo = getDecisionInfo(task.decision);
                 const recommendation = getDecisionRecommendation(task, selectedMethod);
                 const priorityColor = parseFloat(iceScore) >= 8 ? 'bg-green-500' : parseFloat(iceScore) >= 6 ? 'bg-yellow-500' : 'bg-gray-400';
@@ -1173,6 +1227,14 @@ const Dashboard = () => {
           onComplete={endFocusSession}
         />
       )}
+
+      {/* ICE Weights Settings Modal */}
+      <ICEWeightsSettings
+        isOpen={showWeightsSettings}
+        currentWeights={iceWeights}
+        onClose={() => setShowWeightsSettings(false)}
+        onSave={handleSaveWeights}
+      />
 
       {/* Celebration Effect */}
       {showCelebration && (

@@ -288,10 +288,64 @@ class ApiTaskStorage implements TaskStorage {
   }
 }
 
-// Export the appropriate storage implementation based on configuration
-export const taskStorage: TaskStorage = APP_CONFIG.IS_DEMO
-  ? new LocalStorageTaskStorage()
-  : new ApiTaskStorage()
+// Dynamic storage that chooses the right implementation at runtime
+class DynamicTaskStorage implements TaskStorage {
+  private getStorage(): TaskStorage {
+    return APP_CONFIG.IS_DEMO
+      ? new LocalStorageTaskStorage()
+      : new ApiTaskStorage()
+  }
+
+  async getTasks(params?: { status?: string; timeBlock?: string; limit?: number }): Promise<Task[]> {
+    return this.getStorage().getTasks(params)
+  }
+
+  async createTask(task: CreateTaskInput): Promise<Task> {
+    return this.getStorage().createTask(task)
+  }
+
+  async updateTask(id: number, task: Partial<Task>): Promise<Task> {
+    return this.getStorage().updateTask(id, task)
+  }
+
+  async deleteTask(id: number): Promise<void> {
+    return this.getStorage().deleteTask(id)
+  }
+
+  async completeTask(id: number): Promise<Task> {
+    return this.getStorage().completeTask(id)
+  }
+
+  async startFocusSession(taskId: number): Promise<Task> {
+    return this.getStorage().startFocusSession(taskId)
+  }
+
+  async endFocusSession(taskId: number, duration: number): Promise<Task> {
+    return this.getStorage().endFocusSession(taskId, duration)
+  }
+
+  async addTimeEntry(taskId: number, duration: number, type: 'focus' | 'regular'): Promise<Task> {
+    return this.getStorage().addTimeEntry(taskId, duration, type)
+  }
+
+  async getCurrentUser(): Promise<User> {
+    return this.getStorage().getCurrentUser()
+  }
+
+  async getPreferences(): Promise<UserPreferences> {
+    return this.getStorage().getPreferences()
+  }
+
+  async updatePreferences(preferences: Partial<UserPreferences>): Promise<UserPreferences> {
+    return this.getStorage().updatePreferences(preferences)
+  }
+
+  async getOverviewStats(): Promise<OverviewStats> {
+    return this.getStorage().getOverviewStats()
+  }
+}
+
+export const taskStorage: TaskStorage = new DynamicTaskStorage()
 
 // Export for testing and debugging
 export { LocalStorageTaskStorage, ApiTaskStorage }
