@@ -1177,6 +1177,21 @@ const Dashboard = () => {
       {/* Celebration Effect */}
       {showCelebration && (
         <div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center">
+          <style>
+            {`
+              @keyframes celebration-fall {
+                0% {
+                  transform: translateY(0) translateX(0) rotate(0deg) scale(1);
+                  opacity: 1;
+                }
+                100% {
+                  transform: translateY(100vh) translateX(var(--x-offset, 0)) rotate(720deg) scale(0.5);
+                  opacity: 0;
+                }
+              }
+            `}
+          </style>
+
           {/* Confetti-like particles */}
           <div className="absolute inset-0">
             {[...Array(50)].map((_, i) => {
@@ -1215,19 +1230,6 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes celebration-fall {
-          0% {
-            transform: translateY(0) translateX(0) rotate(0deg) scale(1);
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(100vh) translateX(var(--x-offset, 0)) rotate(720deg) scale(0.5);
-            opacity: 0;
-          }
-        }
-      `}</style>
     </div>
   );
 };
