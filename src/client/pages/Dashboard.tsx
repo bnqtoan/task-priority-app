@@ -147,12 +147,16 @@ const Dashboard = () => {
     }
   };
 
-  const updateTask = async (id: number, field: string, value: any) => {
+  const updateTask = async (id: number, field: string, value: any, skipLocalUpdate = false) => {
     try {
       const updatedTask = APP_CONFIG.IS_DEMO
         ? await taskStorage.updateTask(id, { [field]: value })
         : await api.updateTask(id, { [field]: value });
-      setTasks(tasks.map(t => t.id === id ? updatedTask : t));
+
+      // Only update tasks state if we're not in the middle of debouncing the same field
+      if (!skipLocalUpdate) {
+        setTasks(tasks.map(t => t.id === id ? updatedTask : t));
+      }
 
       // Refresh stats if the change affects stats
       if (['decision', 'timeBlock', 'type', 'estimatedTime'].includes(field)) {
@@ -161,8 +165,11 @@ const Dashboard = () => {
           : await api.getOverview();
         setStats(updatedStats);
       }
+
+      return updatedTask;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update task');
+      throw err;
     }
   };
 
@@ -175,7 +182,7 @@ const Dashboard = () => {
     }));
 
     // Also update the tasks state for immediate visual feedback
-    setTasks(prevTasks => 
+    setTasks(prevTasks =>
       prevTasks.map(t => t.id === id ? { ...t, [field]: value } : t)
     );
 
@@ -188,26 +195,43 @@ const Dashboard = () => {
     // Set new timeout to update via API after delay
     debounceTimeouts.current[key] = setTimeout(async () => {
       try {
-        await updateTask(id, field, value);
-        // Remove from local state since it's now persisted
+        // Get the most current value from state
         setLocalTaskValues(prev => {
-          const newState = { ...prev };
-          delete newState[key];
-          return newState;
+          const currentValue = prev[key];
+
+          // If there's still a value in local state, persist it
+          if (currentValue !== undefined) {
+            // Async function to handle the API call
+            (async () => {
+              try {
+                await updateTask(id, field, currentValue, true);
+              } catch (err) {
+                // On error, refresh from server
+                try {
+                  const refreshedTasks = APP_CONFIG.IS_DEMO
+                    ? await taskStorage.getTasks({ status: statusFilter })
+                    : await api.getTasks({ status: statusFilter });
+                  setTasks(refreshedTasks);
+                } catch (refreshErr) {
+                  setError(err instanceof Error ? err.message : 'Failed to update task');
+                }
+              }
+            })();
+
+            // Remove from local state
+            const newState = { ...prev };
+            delete newState[key];
+            return newState;
+          }
+
+          return prev;
         });
       } catch (err) {
-        // On error, revert the optimistic update
-        setTasks(prevTasks => 
-          prevTasks.map(t => t.id === id ? { 
-            ...t, 
-            [field]: localTaskValues[key] || t[field as keyof Task] 
-          } : t)
-        );
         setError(err instanceof Error ? err.message : 'Failed to update task');
       }
       delete debounceTimeouts.current[key];
     }, 500); // 500ms delay
-  }, [localTaskValues]);
+  }, [localTaskValues, statusFilter]);
 
   // Focus mode functions
   const startFocusSession = async (task: Task) => {
@@ -743,7 +767,7 @@ const Dashboard = () => {
                           <div className="flex items-center gap-2 mb-2">
                             <input
                               type="text"
-                              value={task.name}
+                              value={localTaskValues[`${task.id}-name`] ?? task.name}
                               onChange={(e) => debouncedUpdateTask(task.id, 'name', e.target.value)}
                               className={`flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 font-medium ${
                                 task.status === 'completed' ? 'line-through text-gray-500' : ''
