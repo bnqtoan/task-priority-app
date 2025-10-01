@@ -7,24 +7,29 @@ The "Authentication failed" error has been resolved. Here's how to properly run 
 ## **Development Setup**
 
 ### 1. **Install Dependencies** (if not done already)
+
 ```bash
 npm install
 ```
 
 ### 2. **Setup Local Database** (automatic on first run)
+
 ```bash
 npm run setup-local
 ```
+
 This creates `dev.db` with sample data.
 
 ### 3. **Start Development Servers**
 
 **Option A: Start Both Servers Together**
+
 ```bash
 npm run dev
 ```
 
 **Option B: Start Servers Separately**
+
 ```bash
 # Terminal 1 - Backend API
 npm run dev:server
@@ -90,6 +95,7 @@ For production deployment with real Cloudflare Access:
 ## **Troubleshooting**
 
 **Port Already in Use?**
+
 ```bash
 # Kill processes on ports
 lsof -ti:8787 | xargs kill
@@ -97,6 +103,7 @@ lsof -ti:5173 | xargs kill
 ```
 
 **Database Issues?**
+
 ```bash
 # Recreate database
 rm dev.db
@@ -104,6 +111,7 @@ npm run setup-local
 ```
 
 **Missing Dependencies?**
+
 ```bash
 npm install
 ```

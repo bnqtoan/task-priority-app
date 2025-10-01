@@ -1,22 +1,30 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Zap, TrendingUp, CheckCircle, Clock, Play } from 'lucide-react';
-import { taskStorage } from '../../lib/storage';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import {
+  ArrowLeft,
+  Calendar,
+  Zap,
+  TrendingUp,
+  CheckCircle,
+  Clock,
+  Play,
+} from "lucide-react";
+import { taskStorage } from "../../lib/storage";
 import {
   getSchedulingWindowInfo,
   getRecurringPatternInfo,
   formatMinutes,
   getStreakEmoji,
   groupTasksByTimeBlock,
-  getTimeBlockColor
-} from '../../utils/scheduling';
-import { calculateICE } from '../lib/helpers';
-import type { Task, DailyCapacity } from '../../utils/types';
+  getTimeBlockColor,
+} from "../../utils/scheduling";
+import { calculateICE } from "../lib/helpers";
+import type { Task, DailyCapacity } from "../../utils/types";
 
-type FocusTab = 'today' | 'week' | 'month' | 'someday';
+type FocusTab = "today" | "week" | "month" | "someday";
 
 const FocusView = () => {
-  const [activeTab, setActiveTab] = useState<FocusTab>('today');
+  const [activeTab, setActiveTab] = useState<FocusTab>("today");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [capacity, setCapacity] = useState<DailyCapacity | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,21 +39,21 @@ const FocusView = () => {
       let fetchedTasks: Task[] = [];
 
       switch (activeTab) {
-        case 'today':
+        case "today":
           fetchedTasks = await taskStorage.getTasksForToday();
           const cap = await taskStorage.getDailyCapacity();
           setCapacity(cap);
           break;
-        case 'week':
+        case "week":
           fetchedTasks = await taskStorage.getTasksForWeek();
           break;
-        case 'month':
+        case "month":
           fetchedTasks = await taskStorage.getTasksForMonth();
           break;
-        case 'someday':
+        case "someday":
           fetchedTasks = await taskStorage.getTasks({
-            status: 'active',
-            scheduledFor: 'someday'
+            status: "active",
+            scheduledFor: "someday",
           });
           break;
       }
@@ -59,7 +67,7 @@ const FocusView = () => {
 
       setTasks(fetchedTasks);
     } catch (error) {
-      console.error('Failed to load tasks:', error);
+      console.error("Failed to load tasks:", error);
     } finally {
       setLoading(false);
     }
@@ -74,7 +82,7 @@ const FocusView = () => {
       }
       loadData();
     } catch (error) {
-      console.error('Failed to complete task:', error);
+      console.error("Failed to complete task:", error);
     }
   };
 
@@ -82,14 +90,14 @@ const FocusView = () => {
     try {
       await taskStorage.startFocusSession(task.id);
       // Navigate to dashboard with focus mode
-      window.location.href = '/';
+      window.location.href = "/";
     } catch (error) {
-      console.error('Failed to start focus:', error);
+      console.error("Failed to start focus:", error);
     }
   };
 
   const groupedTasks = groupTasksByTimeBlock(tasks);
-  const completedCount = tasks.filter(t => t.status === 'completed').length;
+  const completedCount = tasks.filter((t) => t.status === "completed").length;
   const totalTime = tasks.reduce((sum, t) => sum + t.estimatedTime, 0);
 
   return (
@@ -118,11 +126,11 @@ const FocusView = () => {
       <div className="bg-white rounded-lg shadow-lg mb-6">
         <div className="flex border-b overflow-x-auto">
           <button
-            onClick={() => setActiveTab('today')}
+            onClick={() => setActiveTab("today")}
             className={`px-8 py-4 font-semibold whitespace-nowrap transition-all ${
-              activeTab === 'today'
-                ? 'border-b-4 border-red-500 text-red-600 bg-red-50'
-                : 'text-gray-600 hover:bg-gray-50'
+              activeTab === "today"
+                ? "border-b-4 border-red-500 text-red-600 bg-red-50"
+                : "text-gray-600 hover:bg-gray-50"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -131,11 +139,11 @@ const FocusView = () => {
             </div>
           </button>
           <button
-            onClick={() => setActiveTab('week')}
+            onClick={() => setActiveTab("week")}
             className={`px-8 py-4 font-semibold whitespace-nowrap transition-all ${
-              activeTab === 'week'
-                ? 'border-b-4 border-blue-500 text-blue-600 bg-blue-50'
-                : 'text-gray-600 hover:bg-gray-50'
+              activeTab === "week"
+                ? "border-b-4 border-blue-500 text-blue-600 bg-blue-50"
+                : "text-gray-600 hover:bg-gray-50"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -144,11 +152,11 @@ const FocusView = () => {
             </div>
           </button>
           <button
-            onClick={() => setActiveTab('month')}
+            onClick={() => setActiveTab("month")}
             className={`px-8 py-4 font-semibold whitespace-nowrap transition-all ${
-              activeTab === 'month'
-                ? 'border-b-4 border-purple-500 text-purple-600 bg-purple-50'
-                : 'text-gray-600 hover:bg-gray-50'
+              activeTab === "month"
+                ? "border-b-4 border-purple-500 text-purple-600 bg-purple-50"
+                : "text-gray-600 hover:bg-gray-50"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -157,11 +165,11 @@ const FocusView = () => {
             </div>
           </button>
           <button
-            onClick={() => setActiveTab('someday')}
+            onClick={() => setActiveTab("someday")}
             className={`px-8 py-4 font-semibold whitespace-nowrap transition-all ${
-              activeTab === 'someday'
-                ? 'border-b-4 border-gray-500 text-gray-600 bg-gray-50'
-                : 'text-gray-600 hover:bg-gray-50'
+              activeTab === "someday"
+                ? "border-b-4 border-gray-500 text-gray-600 bg-gray-50"
+                : "text-gray-600 hover:bg-gray-50"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -176,17 +184,23 @@ const FocusView = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-lg p-3 border">
               <div className="text-xs text-gray-500 mb-1">Total Tasks</div>
-              <div className="text-2xl font-bold text-gray-800">{tasks.length}</div>
+              <div className="text-2xl font-bold text-gray-800">
+                {tasks.length}
+              </div>
             </div>
             <div className="bg-white rounded-lg p-3 border">
               <div className="text-xs text-gray-500 mb-1">Completed</div>
-              <div className="text-2xl font-bold text-green-600">{completedCount}</div>
+              <div className="text-2xl font-bold text-green-600">
+                {completedCount}
+              </div>
             </div>
             <div className="bg-white rounded-lg p-3 border">
               <div className="text-xs text-gray-500 mb-1">Total Time</div>
-              <div className="text-2xl font-bold text-blue-600">{formatMinutes(totalTime)}</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {formatMinutes(totalTime)}
+              </div>
             </div>
-            {capacity && activeTab === 'today' && (
+            {capacity && activeTab === "today" && (
               <div className="bg-white rounded-lg p-3 border">
                 <div className="text-xs text-gray-500 mb-1">Available</div>
                 <div className="text-2xl font-bold text-purple-600">
@@ -199,15 +213,16 @@ const FocusView = () => {
       </div>
 
       {/* Capacity Warning (Today only) */}
-      {capacity && activeTab === 'today' && capacity.availableMinutes < 0 && (
+      {capacity && activeTab === "today" && capacity.availableMinutes < 0 && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-lg">
           <div className="flex items-center gap-2">
             <span className="text-2xl">⚠️</span>
             <div>
               <p className="font-semibold text-yellow-800">Overcommitted!</p>
               <p className="text-sm text-yellow-700">
-                You have {formatMinutes(Math.abs(capacity.availableMinutes))} more work than time available today.
-                Consider moving some tasks to later.
+                You have {formatMinutes(Math.abs(capacity.availableMinutes))}{" "}
+                more work than time available today. Consider moving some tasks
+                to later.
               </p>
             </div>
           </div>
@@ -226,13 +241,13 @@ const FocusView = () => {
         <div className="bg-white rounded-lg shadow-lg p-12 text-center">
           <div className="text-6xl mb-4">🎉</div>
           <h3 className="text-2xl font-bold text-gray-800 mb-2">
-            {activeTab === 'today' && "You're all clear for today!"}
-            {activeTab === 'week' && "No tasks scheduled this week"}
-            {activeTab === 'month' && "No tasks scheduled this month"}
-            {activeTab === 'someday' && "Your backlog is empty"}
+            {activeTab === "today" && "You're all clear for today!"}
+            {activeTab === "week" && "No tasks scheduled this week"}
+            {activeTab === "month" && "No tasks scheduled this month"}
+            {activeTab === "someday" && "Your backlog is empty"}
           </h3>
           <p className="text-gray-600">
-            {activeTab !== 'someday'
+            {activeTab !== "someday"
               ? "Great job! Check your backlog or add new tasks."
               : "Add some tasks to your backlog to work on later."}
           </p>
@@ -294,11 +309,11 @@ function TaskSection({
   tasks,
   timeBlock,
   onComplete,
-  onStartFocus
+  onStartFocus,
 }: {
   title: string;
   tasks: Task[];
-  timeBlock: Task['timeBlock'];
+  timeBlock: Task["timeBlock"];
   onComplete: (task: Task) => void;
   onStartFocus: (task: Task) => void;
 }) {
@@ -306,7 +321,9 @@ function TaskSection({
 
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-      <div className={`${getTimeBlockColor(timeBlock)} px-6 py-4 border-b flex items-center justify-between`}>
+      <div
+        className={`${getTimeBlockColor(timeBlock)} px-6 py-4 border-b flex items-center justify-between`}
+      >
         <div>
           <h3 className="text-lg font-bold">{title}</h3>
           <p className="text-sm opacity-80">
@@ -333,7 +350,7 @@ function TaskSection({
 function TaskCard({
   task,
   onComplete,
-  onStartFocus
+  onStartFocus,
 }: {
   task: Task;
   onComplete: (task: Task) => void;
@@ -341,7 +358,9 @@ function TaskCard({
 }) {
   const iceScore = calculateICE(task);
   const recurringInfo = getRecurringPatternInfo(task.recurringPattern || null);
-  const schedulingInfo = task.scheduledFor ? getSchedulingWindowInfo(task.scheduledFor) : null;
+  const schedulingInfo = task.scheduledFor
+    ? getSchedulingWindowInfo(task.scheduledFor)
+    : null;
 
   return (
     <div className="p-4 hover:bg-gray-50 transition-colors">
@@ -353,32 +372,42 @@ function TaskCard({
               ICE: {iceScore}
             </span>
             {recurringInfo && (
-              <span className={`px-2 py-1 text-xs font-medium rounded border ${recurringInfo.color}`}>
+              <span
+                className={`px-2 py-1 text-xs font-medium rounded border ${recurringInfo.color}`}
+              >
                 {recurringInfo.icon} {recurringInfo.label}
                 {task.streakCount && task.streakCount > 0 && (
-                  <span className="ml-1">{getStreakEmoji(task.streakCount)} {task.streakCount}</span>
+                  <span className="ml-1">
+                    {getStreakEmoji(task.streakCount)} {task.streakCount}
+                  </span>
                 )}
               </span>
             )}
             {schedulingInfo && (
-              <span className={`px-2 py-1 text-xs font-medium rounded border ${schedulingInfo.color}`}>
+              <span
+                className={`px-2 py-1 text-xs font-medium rounded border ${schedulingInfo.color}`}
+              >
                 {schedulingInfo.icon} {schedulingInfo.label}
               </span>
             )}
           </div>
 
           {task.notes && (
-            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.notes}</p>
+            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+              {task.notes}
+            </p>
           )}
 
           <div className="flex items-center gap-4 text-xs text-gray-500">
             <span>⏱️ {task.estimatedTime} min</span>
-            <span>📊 I:{task.impact} C:{task.confidence} E:{task.ease}</span>
+            <span>
+              📊 I:{task.impact} C:{task.confidence} E:{task.ease}
+            </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {task.status === 'active' && (
+          {task.status === "active" && (
             <>
               <button
                 onClick={() => onStartFocus(task)}

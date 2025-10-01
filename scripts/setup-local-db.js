@@ -1,29 +1,30 @@
 // Simple local database setup script
-import Database from 'better-sqlite3';
-import fs from 'fs';
-import path from 'path';
+import Database from "better-sqlite3";
+import fs from "fs";
+import path from "path";
 
-const dbPath = './dev.db';
-const migrationsDir = './src/db/migrations';
+const dbPath = "./dev.db";
+const migrationsDir = "./src/db/migrations";
 
 // Remove existing database
 if (fs.existsSync(dbPath)) {
   fs.unlinkSync(dbPath);
-  console.log('🗑️  Removed existing database');
+  console.log("🗑️  Removed existing database");
 }
 
 // Create new database
 const db = new Database(dbPath);
-console.log('📊 Created new local database');
+console.log("📊 Created new local database");
 
 // Read and execute all migrations in order
-const migrationFiles = fs.readdirSync(migrationsDir)
-  .filter(file => file.endsWith('.sql'))
+const migrationFiles = fs
+  .readdirSync(migrationsDir)
+  .filter((file) => file.endsWith(".sql"))
   .sort(); // Ensure proper order
 
 for (const migrationFile of migrationFiles) {
   const migrationPath = path.join(migrationsDir, migrationFile);
-  const migration = fs.readFileSync(migrationPath, 'utf8');
+  const migration = fs.readFileSync(migrationPath, "utf8");
   db.exec(migration);
   console.log(`🚀 Applied migration: ${migrationFile}`);
 }
@@ -50,7 +51,7 @@ INSERT INTO tasks (id, user_id, name, notes, impact, confidence, ease, type, tim
 `;
 
 db.exec(sampleData);
-console.log('📝 Inserted sample data');
+console.log("📝 Inserted sample data");
 
 db.close();
-console.log('✅ Local database setup complete!');
+console.log("✅ Local database setup complete!");

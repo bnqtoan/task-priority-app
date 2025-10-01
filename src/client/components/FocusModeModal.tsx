@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react';
-import { CompactFocusMode } from './CompactFocusMode';
-import { Task, FocusQuote, PomodoroSettings, PomodoroState } from '../../utils/types';
-import { getRandomFocusQuote } from '../../utils/focus-quotes';
+import { useState, useEffect } from "react";
+import { CompactFocusMode } from "./CompactFocusMode";
+import {
+  Task,
+  FocusQuote,
+  PomodoroSettings,
+  PomodoroState,
+} from "../../utils/types";
+import { getRandomFocusQuote } from "../../utils/focus-quotes";
 import {
   loadPomodoroSettings,
   getPomodoroModeInfo,
@@ -9,8 +14,8 @@ import {
   getPomodoroModeDuration,
   getPomodoroCompletionMessage,
   playPomodoroSound,
-  showPomodoroNotification
-} from '../../utils/pomodoro';
+  showPomodoroNotification,
+} from "../../utils/pomodoro";
 
 interface FocusModeModalProps {
   task: Task;
@@ -20,7 +25,13 @@ interface FocusModeModalProps {
   usePomodoroMode?: boolean;
 }
 
-export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroMode = false }: FocusModeModalProps) {
+export function FocusModeModal({
+  task,
+  isOpen,
+  onClose,
+  onComplete,
+  usePomodoroMode = false,
+}: FocusModeModalProps) {
   const [startTime] = useState(new Date());
   const [elapsedTime, setElapsedTime] = useState(0);
   const [quote] = useState<FocusQuote>(getRandomFocusQuote());
@@ -30,7 +41,7 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
 
   // View mode state
   const [isCompactMode, setIsCompactMode] = useState(() => {
-    return localStorage.getItem('focusModeView') === 'compact';
+    return localStorage.getItem("focusModeView") === "compact";
   });
   const [isMinimized, setIsMinimized] = useState(false);
 
@@ -40,16 +51,16 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
     if (usePomodoroMode) {
       return {
         isEnabled: true,
-        currentMode: 'work',
+        currentMode: "work",
         completedPomodoros: 0,
-        totalPomodorosToday: 0
+        totalPomodorosToday: 0,
       };
     }
     return {
       isEnabled: false,
-      currentMode: 'work',
+      currentMode: "work",
       completedPomodoros: 0,
-      totalPomodorosToday: 0
+      totalPomodorosToday: 0,
     };
   });
 
@@ -59,12 +70,15 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
 
     const interval = setInterval(() => {
       const now = new Date();
-      const elapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000) - pausedTime;
+      const elapsed =
+        Math.floor((now.getTime() - startTime.getTime()) / 1000) - pausedTime;
       setElapsedTime(elapsed);
 
       // Check if Pomodoro session is complete
       if (pomodoroState.isEnabled) {
-        const targetDuration = getPomodoroModeDuration(pomodoroState.currentMode, pomodoroSettings) * 60;
+        const targetDuration =
+          getPomodoroModeDuration(pomodoroState.currentMode, pomodoroSettings) *
+          60;
         if (elapsed >= targetDuration) {
           handlePomodoroComplete();
         }
@@ -80,16 +94,18 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
     const secs = seconds % 60;
 
     if (hrs > 0) {
-      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
     }
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const handlePause = () => {
     if (isPaused) {
       if (pauseStartTime) {
-        const pauseDuration = Math.floor((new Date().getTime() - pauseStartTime.getTime()) / 1000);
-        setPausedTime(prev => prev + pauseDuration);
+        const pauseDuration = Math.floor(
+          (new Date().getTime() - pauseStartTime.getTime()) / 1000,
+        );
+        setPausedTime((prev) => prev + pauseDuration);
         setPauseStartTime(null);
       }
     } else {
@@ -113,30 +129,34 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
     const message = getPomodoroCompletionMessage(
       pomodoroState.currentMode,
       pomodoroState.completedPomodoros,
-      pomodoroSettings.pomodorosUntilLongBreak
+      pomodoroSettings.pomodorosUntilLongBreak,
     );
 
     if (pomodoroSettings.showNotifications) {
-      showPomodoroNotification('Pomodoro Timer', message);
+      showPomodoroNotification("Pomodoro Timer", message);
     }
 
     // Update state for next phase
     const nextMode = getNextPomodoroMode(
       pomodoroState.currentMode,
-      pomodoroState.completedPomodoros + (pomodoroState.currentMode === 'work' ? 1 : 0),
-      pomodoroSettings.pomodorosUntilLongBreak
+      pomodoroState.completedPomodoros +
+        (pomodoroState.currentMode === "work" ? 1 : 0),
+      pomodoroSettings.pomodorosUntilLongBreak,
     );
 
-    const newCompletedPomodoros = pomodoroState.currentMode === 'work'
-      ? pomodoroState.completedPomodoros + 1
-      : nextMode === 'work' && pomodoroState.completedPomodoros >= pomodoroSettings.pomodorosUntilLongBreak
-      ? 0
-      : pomodoroState.completedPomodoros;
+    const newCompletedPomodoros =
+      pomodoroState.currentMode === "work"
+        ? pomodoroState.completedPomodoros + 1
+        : nextMode === "work" &&
+            pomodoroState.completedPomodoros >=
+              pomodoroSettings.pomodorosUntilLongBreak
+          ? 0
+          : pomodoroState.completedPomodoros;
 
     setPomodoroState({
       ...pomodoroState,
       currentMode: nextMode,
-      completedPomodoros: newCompletedPomodoros
+      completedPomodoros: newCompletedPomodoros,
     });
 
     // Reset timer
@@ -145,8 +165,8 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
 
     // Auto-start next phase if enabled
     if (
-      (nextMode !== 'work' && pomodoroSettings.autoStartBreaks) ||
-      (nextMode === 'work' && pomodoroSettings.autoStartPomodoros)
+      (nextMode !== "work" && pomodoroSettings.autoStartBreaks) ||
+      (nextMode === "work" && pomodoroSettings.autoStartPomodoros)
     ) {
       // Timer continues automatically
       setIsPaused(false);
@@ -160,7 +180,7 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
   const toggleViewMode = () => {
     const newMode = !isCompactMode;
     setIsCompactMode(newMode);
-    localStorage.setItem('focusModeView', newMode ? 'compact' : 'full');
+    localStorage.setItem("focusModeView", newMode ? "compact" : "full");
     setIsMinimized(false);
   };
 
@@ -175,7 +195,9 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
           elapsedTime={elapsedTime}
           isPaused={isPaused}
           pomodoroState={pomodoroState.isEnabled ? pomodoroState : undefined}
-          pomodoroSettings={pomodoroState.isEnabled ? pomodoroSettings : undefined}
+          pomodoroSettings={
+            pomodoroState.isEnabled ? pomodoroSettings : undefined
+          }
           onPause={handlePause}
           onComplete={handleComplete}
           onClose={onClose}
@@ -190,11 +212,16 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
   }
 
   // Render full immersive mode
-  const modeInfo = pomodoroState.isEnabled ? getPomodoroModeInfo(pomodoroState.currentMode) : null;
-  const bgGradient = modeInfo?.color || 'from-blue-900 via-purple-900 to-indigo-900';
+  const modeInfo = pomodoroState.isEnabled
+    ? getPomodoroModeInfo(pomodoroState.currentMode)
+    : null;
+  const bgGradient =
+    modeInfo?.color || "from-blue-900 via-purple-900 to-indigo-900";
 
   return (
-    <div className={`fixed inset-0 z-50 bg-gradient-to-br ${bgGradient} flex items-center justify-center`}>
+    <div
+      className={`fixed inset-0 z-50 bg-gradient-to-br ${bgGradient} flex items-center justify-center`}
+    >
       <div className="absolute inset-0 bg-black bg-opacity-40"></div>
 
       {/* Close button */}
@@ -203,8 +230,18 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
         className="absolute top-6 right-6 text-white hover:text-gray-300 transition-colors z-10"
         aria-label="Close focus mode"
       >
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        <svg
+          className="w-8 h-8"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M6 18L18 6M6 6l12 12"
+          />
         </svg>
       </button>
 
@@ -213,8 +250,18 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
         onClick={toggleViewMode}
         className="absolute top-6 left-6 text-white hover:text-gray-300 transition-colors z-10 flex items-center gap-2 px-4 py-2 bg-white bg-opacity-10 rounded-lg backdrop-blur-sm"
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+          />
         </svg>
         <span className="text-sm">Compact Mode</span>
       </button>
@@ -224,7 +271,9 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
         {/* Pomodoro indicator */}
         {pomodoroState.isEnabled && (
           <div className="mb-4 text-lg font-medium opacity-90">
-            {modeInfo?.icon} {modeInfo?.label} • {pomodoroState.completedPomodoros}/{pomodoroSettings.pomodorosUntilLongBreak}
+            {modeInfo?.icon} {modeInfo?.label} •{" "}
+            {pomodoroState.completedPomodoros}/
+            {pomodoroSettings.pomodorosUntilLongBreak}
           </div>
         )}
 
@@ -239,12 +288,16 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
             {formatTime(elapsedTime)}
           </div>
           <div className="text-lg text-blue-200">
-            {isPaused ? 'Paused' : pomodoroState.isEnabled ? modeInfo?.description : 'Focus Time'}
+            {isPaused
+              ? "Paused"
+              : pomodoroState.isEnabled
+                ? modeInfo?.description
+                : "Focus Time"}
           </div>
         </div>
 
         {/* Quote */}
-        {!pomodoroState.isEnabled || pomodoroState.currentMode === 'work' ? (
+        {!pomodoroState.isEnabled || pomodoroState.currentMode === "work" ? (
           <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-8 mb-12 max-w-2xl mx-auto">
             <blockquote className="text-xl md:text-2xl italic text-blue-50 mb-4">
               "{quote.text}"
@@ -253,9 +306,7 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
           </div>
         ) : (
           <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-8 mb-12 max-w-2xl mx-auto">
-            <p className="text-2xl text-blue-50">
-              {modeInfo?.description}
-            </p>
+            <p className="text-2xl text-blue-50">{modeInfo?.description}</p>
           </div>
         )}
 
@@ -265,21 +316,29 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
             onClick={handlePause}
             className={`px-8 py-4 rounded-lg font-medium text-lg transition-all duration-200 ${
               isPaused
-                ? 'bg-green-600 hover:bg-green-700 text-white'
-                : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                ? "bg-green-600 hover:bg-green-700 text-white"
+                : "bg-yellow-600 hover:bg-yellow-700 text-white"
             }`}
           >
             {isPaused ? (
               <span className="flex items-center space-x-2">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M8 5v14l11-7z" />
                 </svg>
                 <span>Resume</span>
               </span>
             ) : (
               <span className="flex items-center space-x-2">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
                 </svg>
                 <span>Pause</span>
               </span>
@@ -290,8 +349,18 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
             onClick={handleComplete}
             className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-lg transition-all duration-200 flex items-center space-x-2"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
             <span>Complete Session</span>
           </button>
@@ -300,9 +369,10 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
         {/* Estimated vs actual time */}
         {task.estimatedTime && (
           <div className="mt-8 text-blue-200 text-sm">
-            Estimated: {task.estimatedTime} min |
-            Actual: {Math.ceil(elapsedTime / 60)} min
-            {task.actualTime && ` | Total time: ${task.actualTime + Math.ceil(elapsedTime / 60)} min`}
+            Estimated: {task.estimatedTime} min | Actual:{" "}
+            {Math.ceil(elapsedTime / 60)} min
+            {task.actualTime &&
+              ` | Total time: ${task.actualTime + Math.ceil(elapsedTime / 60)} min`}
           </div>
         )}
       </div>

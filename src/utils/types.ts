@@ -1,6 +1,6 @@
 // Shared types for frontend and backend
-export type SchedulingWindow = 'today' | 'this-week' | 'this-month' | 'someday';
-export type RecurringPattern = 'daily' | 'weekly' | 'monthly' | null;
+export type SchedulingWindow = "today" | "this-week" | "this-month" | "someday";
+export type RecurringPattern = "daily" | "weekly" | "monthly" | null;
 
 export interface Task {
   id: number;
@@ -10,11 +10,11 @@ export interface Task {
   impact: number; // 1-10
   confidence: number; // 1-10
   ease: number; // 1-10
-  type: 'revenue' | 'growth' | 'operations' | 'strategic' | 'personal';
-  timeBlock: 'deep' | 'collaborative' | 'quick' | 'systematic';
+  type: "revenue" | "growth" | "operations" | "strategic" | "personal";
+  timeBlock: "deep" | "collaborative" | "quick" | "systematic";
   estimatedTime: number; // in minutes
-  decision: 'do' | 'delegate' | 'delay' | 'delete';
-  status: 'active' | 'completed' | 'archived';
+  decision: "do" | "delegate" | "delay" | "delete";
+  status: "active" | "completed" | "archived";
   createdAt: Date;
   updatedAt: Date;
   completedAt?: Date;
@@ -36,7 +36,7 @@ export interface TimeEntry {
   startTime: Date;
   endTime?: Date;
   duration?: number; // in minutes, calculated when session ends
-  type: 'focus' | 'regular'; // focus mode or regular tracking
+  type: "focus" | "regular"; // focus mode or regular tracking
 }
 
 export interface User {
@@ -48,9 +48,9 @@ export interface User {
 }
 
 export interface ICEWeights {
-  impact: number;    // 0-100, percentage weight
+  impact: number; // 0-100, percentage weight
   confidence: number; // 0-100, percentage weight
-  ease: number;      // 0-100, percentage weight
+  ease: number; // 0-100, percentage weight
   // Total should always equal 100
 }
 
@@ -70,16 +70,16 @@ export interface CreateTaskInput {
   impact: number;
   confidence: number;
   ease: number;
-  type: Task['type'];
-  timeBlock: Task['timeBlock'];
+  type: Task["type"];
+  timeBlock: Task["timeBlock"];
   estimatedTime: number;
-  decision: Task['decision'];
+  decision: Task["decision"];
   scheduledFor?: SchedulingWindow;
   recurringPattern?: RecurringPattern;
 }
 
 export interface UpdateTaskInput extends Partial<CreateTaskInput> {
-  status?: Task['status'];
+  status?: Task["status"];
   lastCompletedDate?: Date;
   streakCount?: number;
 }
@@ -115,7 +115,7 @@ export interface OverviewStats {
 }
 
 export interface AIRecommendation {
-  decision: Task['decision'];
+  decision: Task["decision"];
   reason: string;
 }
 
@@ -140,9 +140,9 @@ export interface FocusQuote {
 
 // Pomodoro Settings
 export interface PomodoroSettings {
-  workDuration: number;           // minutes, 15-60
-  shortBreakDuration: number;     // minutes, 3-15
-  longBreakDuration: number;      // minutes, 10-30
+  workDuration: number; // minutes, 15-60
+  shortBreakDuration: number; // minutes, 3-15
+  longBreakDuration: number; // minutes, 10-30
   pomodorosUntilLongBreak: number; // 2-8
   autoStartBreaks: boolean;
   autoStartPomodoros: boolean;
@@ -152,9 +152,9 @@ export interface PomodoroSettings {
 
 export interface PomodoroState {
   isEnabled: boolean;
-  currentMode: 'work' | 'short-break' | 'long-break';
-  completedPomodoros: number;     // in current cycle
-  totalPomodorosToday: number;   // daily stats
+  currentMode: "work" | "short-break" | "long-break";
+  completedPomodoros: number; // in current cycle
+  totalPomodorosToday: number; // daily stats
 }
 
 export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
@@ -165,7 +165,7 @@ export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
   autoStartBreaks: false,
   autoStartPomodoros: false,
   playSound: true,
-  showNotifications: true
+  showNotifications: true,
 };
 
 // Scheduling-related types
@@ -179,12 +179,20 @@ export interface DailyCapacity {
 export interface TaskScheduleSuggestion {
   task: Task;
   reason: string;
-  suggestedTimeBlock: Task['timeBlock'];
-  priority: 'high' | 'medium' | 'low';
+  suggestedTimeBlock: Task["timeBlock"];
+  priority: "high" | "medium" | "low";
 }
 
 // Reports & Analytics types
-export type TimeRangePreset = 'today' | 'week' | 'month' | 'last7' | 'last30' | 'last90' | 'custom' | 'all';
+export type TimeRangePreset =
+  | "today"
+  | "week"
+  | "month"
+  | "last7"
+  | "last30"
+  | "last90"
+  | "custom"
+  | "all";
 
 export interface DateRange {
   start: Date;
@@ -230,7 +238,7 @@ export interface TopTask {
   name: string;
   minutes: number;
   percentage: number;
-  type: Task['type'];
+  type: Task["type"];
   iceScore: number;
 }
 

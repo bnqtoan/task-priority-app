@@ -70,6 +70,7 @@ Click the deploy button above to automatically deploy to Cloudflare Workers. You
 ### Option 2: Manual Deployment
 
 1. **Clone and Setup**
+
    ```bash
    git clone https://github.com/bnqtoan/task-priority-app
    cd task-priority-app
@@ -77,6 +78,7 @@ Click the deploy button above to automatically deploy to Cloudflare Workers. You
    ```
 
 2. **Configure Cloudflare**
+
    ```bash
    wrangler login
    wrangler d1 create task-priority-db
@@ -121,7 +123,7 @@ This application uses Cloudflare Zero Trust for secure authentication. Follow th
    - **Session duration**: `24 hours`
 
    **Access Rules (Choose one):**
-   
+
    **Option A - Email-based access:**
    - **Include**: `Emails`
    - Add authorized email addresses (e.g., `your-email@example.com`)
@@ -143,12 +145,14 @@ This application uses Cloudflare Zero Trust for secure authentication. Follow th
 ### Step 4: Configure Your Application
 
 **For One-Click Deploy:**
+
 1. After deployment, go to your Cloudflare Workers dashboard
 2. Click on your deployed worker
 3. Go to **Settings** → **Variables**
 4. Edit the `ACCESS_AUD` variable and paste your AUD tag
 
 **For Manual Deploy:**
+
 1. Update `wrangler.toml`:
    ```toml
    [vars]
@@ -166,15 +170,18 @@ This application uses Cloudflare Zero Trust for secure authentication. Follow th
 ### Troubleshooting Zero Trust
 
 **"Unauthorized" Error:**
+
 - Verify the AUD tag is correctly set in your environment variables
 - Check that your email/domain is included in the Access policy
 - Ensure the application domain matches your deployed URL
 
 **Login Loop:**
+
 - Check that the Access application domain exactly matches your deployed URL
 - Verify the session duration is set appropriately
 
 **Still Having Issues?**
+
 - Check Cloudflare Zero Trust logs in the dashboard
 - Verify your authentication policy rules
 - Ensure you're using the correct login provider
@@ -201,9 +208,11 @@ npm run db:studio
 ## API Endpoints
 
 ### Authentication
+
 - `GET /api/auth/me` - Get current user info
 
 ### Tasks
+
 - `GET /api/tasks` - List user tasks (with optional filters)
 - `POST /api/tasks` - Create new task
 - `GET /api/tasks/:id` - Get single task
@@ -212,10 +221,12 @@ npm run db:studio
 - `PATCH /api/tasks/:id/complete` - Mark task as completed
 
 ### Preferences
+
 - `GET /api/preferences` - Get user preferences
 - `PUT /api/preferences` - Update user preferences
 
 ### Stats
+
 - `GET /api/stats/overview` - Get overview statistics
 - `GET /api/stats/recommendations?method=hybrid` - Get AI recommendations
 
@@ -251,6 +262,7 @@ npm run db:studio
 ### Local Development Authentication
 
 For local development, the app uses mock Cloudflare Access headers:
+
 - Email: `dev@example.com`
 - Name: `Dev User`
 

@@ -1,8 +1,8 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import Settings from './pages/Settings';
-import FocusView from './pages/FocusView';
-import { Reports } from './pages/Reports';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Dashboard from "./pages/Dashboard";
+import Settings from "./pages/Settings";
+import FocusView from "./pages/FocusView";
+import { Reports } from "./pages/Reports";
 
 function App() {
   return (

@@ -1,59 +1,71 @@
-import { useState } from 'react'
-import { X, Download, Upload, RotateCcw, ExternalLink } from 'lucide-react'
-import { APP_CONFIG } from '../../utils/config'
-import { exportDemoData, importDemoData, resetDemoData } from '../../lib/demo-data'
+import { useState } from "react";
+import { X, Download, Upload, RotateCcw, ExternalLink } from "lucide-react";
+import { APP_CONFIG } from "../../utils/config";
+import {
+  exportDemoData,
+  importDemoData,
+  resetDemoData,
+} from "../../lib/demo-data";
 
 export const DemoNotice = () => {
-  const [isMinimized, setIsMinimized] = useState(false)
-  const [showDataMenu, setShowDataMenu] = useState(false)
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [showDataMenu, setShowDataMenu] = useState(false);
 
-  if (!APP_CONFIG.IS_DEMO) return null
+  if (!APP_CONFIG.IS_DEMO) return null;
 
   const handleExport = () => {
-    const data = exportDemoData()
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `task-priority-demo-${new Date().toISOString().split('T')[0]}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    setShowDataMenu(false)
-  }
+    const data = exportDemoData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `task-priority-demo-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setShowDataMenu(false);
+  };
 
   const handleImport = () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = '.json'
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
     input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
+      const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        const reader = new FileReader()
+        const reader = new FileReader();
         reader.onload = (e) => {
           try {
-            const data = JSON.parse(e.target?.result as string)
-            importDemoData(data)
-            window.location.reload() // Refresh to show imported data
+            const data = JSON.parse(e.target?.result as string);
+            importDemoData(data);
+            window.location.reload(); // Refresh to show imported data
           } catch (error) {
-            alert('Invalid file format. Please select a valid JSON export file.')
+            alert(
+              "Invalid file format. Please select a valid JSON export file.",
+            );
           }
-        }
-        reader.readAsText(file)
+        };
+        reader.readAsText(file);
       }
-    }
-    input.click()
-    setShowDataMenu(false)
-  }
+    };
+    input.click();
+    setShowDataMenu(false);
+  };
 
   const handleReset = () => {
-    if (confirm('Are you sure you want to reset all demo data? This cannot be undone.')) {
-      resetDemoData()
-      window.location.reload()
+    if (
+      confirm(
+        "Are you sure you want to reset all demo data? This cannot be undone.",
+      )
+    ) {
+      resetDemoData();
+      window.location.reload();
     }
-    setShowDataMenu(false)
-  }
+    setShowDataMenu(false);
+  };
 
   if (isMinimized) {
     return (
@@ -65,7 +77,7 @@ export const DemoNotice = () => {
           🚀 Demo Mode
         </button>
       </div>
-    )
+    );
   }
 
   return (
@@ -80,8 +92,9 @@ export const DemoNotice = () => {
               Demo Mode Active
             </h3>
             <p className="text-sm text-yellow-700 mb-3">
-              You're using the <strong>demo version</strong> of the Task Priority Framework. 
-              Your data is stored locally in your browser and will be lost when you clear browser data.
+              You're using the <strong>demo version</strong> of the Task
+              Priority Framework. Your data is stored locally in your browser
+              and will be lost when you clear browser data.
             </p>
             <div className="flex flex-wrap gap-2">
               <a
@@ -136,14 +149,14 @@ export const DemoNotice = () => {
           <X className="w-5 h-5" />
         </button>
       </div>
-      
+
       {/* Click outside handler for data menu */}
       {showDataMenu && (
-        <div 
-          className="fixed inset-0 z-0" 
+        <div
+          className="fixed inset-0 z-0"
           onClick={() => setShowDataMenu(false)}
         />
       )}
     </div>
-  )
-}
+  );
+};
