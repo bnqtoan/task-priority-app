@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, Clock, Archive, X, Play, Settings } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, Clock, Archive, X, Play, Settings, Info, HelpCircle } from 'lucide-react';
 import { api } from '../lib/api';
 import { taskStorage } from '../../lib/storage';
 import { APP_CONFIG } from '../../utils/config';
@@ -50,6 +50,12 @@ const Dashboard = () => {
   const [iceWeights, setIceWeights] = useState<ICEWeights>(DEFAULT_ICE_WEIGHTS);
   const [showWeightsSettings, setShowWeightsSettings] = useState(false);
   const [useWeightedScoring, setUseWeightedScoring] = useState(true);
+
+  // UI collapse states
+  const [showICEGuide, setShowICEGuide] = useState(false);
+  const [showDecisionStats, setShowDecisionStats] = useState(false);
+  const [showTimeBlockStats, setShowTimeBlockStats] = useState(false);
+  const [showFrameworkGuide, setShowFrameworkGuide] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -476,72 +482,146 @@ const Dashboard = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <span className="font-semibold text-gray-700">Impact:</span>
-            <p className="text-gray-600 text-xs mt-1">Tác động đến mục tiêu (1-10)</p>
+        {/* Collapsible ICE Guide */}
+        <button
+          onClick={() => setShowICEGuide(!showICEGuide)}
+          className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 transition-colors mb-3"
+        >
+          <Info size={16} />
+          <span>{showICEGuide ? 'Hide' : 'Show'} ICE Framework Guide</span>
+          <ChevronDown
+            size={16}
+            className={`transform transition-transform ${showICEGuide ? 'rotate-180' : ''}`}
+          />
+        </button>
+
+        {showICEGuide && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <span className="font-semibold text-gray-700">Impact:</span>
+              <p className="text-gray-600 text-xs mt-1">Tác động đến mục tiêu (1-10)</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <span className="font-semibold text-gray-700">Confidence:</span>
+              <p className="text-gray-600 text-xs mt-1">Độ chắc chắn hoàn thành (1-10)</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <span className="font-semibold text-gray-700">Ease:</span>
+              <p className="text-gray-600 text-xs mt-1">Độ dễ thực hiện (1-10)</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <span className="font-semibold text-gray-700">ICE Score:</span>
+              <p className="text-gray-600 text-xs mt-1">
+                {useWeightedScoring
+                  ? `Weighted: I(${iceWeights.impact}%) + C(${iceWeights.confidence}%) + E(${iceWeights.ease}%)`
+                  : 'Simple average of 3 factors'}
+              </p>
+            </div>
           </div>
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <span className="font-semibold text-gray-700">Confidence:</span>
-            <p className="text-gray-600 text-xs mt-1">Độ chắc chắn hoàn thành (1-10)</p>
-          </div>
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <span className="font-semibold text-gray-700">Ease:</span>
-            <p className="text-gray-600 text-xs mt-1">Độ dễ thực hiện (1-10)</p>
-          </div>
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <span className="font-semibold text-gray-700">ICE Score:</span>
-            <p className="text-gray-600 text-xs mt-1">
-              {useWeightedScoring
-                ? `Weighted: I(${iceWeights.impact}%) + C(${iceWeights.confidence}%) + E(${iceWeights.ease}%)`
-                : 'Simple average of 3 factors'}
-            </p>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Decision Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        {['do', 'delegate', 'delay', 'delete'].map(decision => {
-          const info = getDecisionInfo(decision);
-          const statsData = getDecisionStats(decision);
-          return (
-            <div key={decision} className={`${info.color} border-2 rounded-lg p-4`}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center">
-                  <span className="text-2xl mr-2">{info.icon}</span>
-                  <span className="font-bold">{info.label}</span>
-                </div>
-                <span className="text-sm font-semibold">{statsData.count} tasks</span>
-              </div>
-              <p className="text-xs mb-2">{info.description}</p>
-              <p className="text-xs mt-1 font-semibold">⏱️ {statsData.time} phút</p>
+      {/* Decision Stats - Compact with Expansion */}
+      <div className="mb-6">
+        <button
+          onClick={() => setShowDecisionStats(!showDecisionStats)}
+          className="w-full bg-white rounded-lg shadow p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-gray-700">4D Decisions:</span>
+            <div className="flex gap-4">
+              {['do', 'delegate', 'delay', 'delete'].map(decision => {
+                const info = getDecisionInfo(decision);
+                const statsData = getDecisionStats(decision);
+                return (
+                  <div key={decision} className="flex items-center gap-1">
+                    <span className="text-lg">{info.icon}</span>
+                    <span className="font-semibold text-sm">{statsData.count}</span>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+          <ChevronDown
+            size={20}
+            className={`transform transition-transform text-gray-500 ${showDecisionStats ? 'rotate-180' : ''}`}
+          />
+        </button>
+
+        {showDecisionStats && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
+            {['do', 'delegate', 'delay', 'delete'].map(decision => {
+              const info = getDecisionInfo(decision);
+              const statsData = getDecisionStats(decision);
+              return (
+                <div key={decision} className={`${info.color} border-2 rounded-lg p-4`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      <span className="text-2xl mr-2">{info.icon}</span>
+                      <span className="font-bold">{info.label}</span>
+                    </div>
+                    <span className="text-sm font-semibold">{statsData.count} tasks</span>
+                  </div>
+                  <p className="text-xs mb-2">{info.description}</p>
+                  <p className="text-xs mt-1 font-semibold">⏱️ {statsData.time} phút</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Time Block Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        {['deep', 'collaborative', 'quick', 'systematic'].map(block => {
-          const info = getTimeBlockInfo(block);
-          const statsData = getTimeBlockStats(block);
-          const Icon = info.icon;
-          return (
-            <div key={block} className={`${info.color} border-2 rounded-lg p-4`}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center">
-                  <Icon size={20} className="mr-2" />
-                  <span className="font-bold">{info.label}</span>
-                </div>
-                <span className="text-sm font-semibold">{statsData.count} tasks</span>
-              </div>
-              <p className="text-xs mb-2">{info.description}</p>
-              <p className="text-xs font-medium">{info.bestTime}</p>
-              <p className="text-xs mt-1 font-semibold">⏱️ {statsData.time} phút</p>
+      {/* Time Block Stats - Compact with Expansion */}
+      <div className="mb-6">
+        <button
+          onClick={() => setShowTimeBlockStats(!showTimeBlockStats)}
+          className="w-full bg-white rounded-lg shadow p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-gray-700">Time Blocks:</span>
+            <div className="flex gap-4">
+              {['deep', 'collaborative', 'quick', 'systematic'].map(block => {
+                const info = getTimeBlockInfo(block);
+                const statsData = getTimeBlockStats(block);
+                const Icon = info.icon;
+                return (
+                  <div key={block} className="flex items-center gap-1">
+                    <Icon size={16} />
+                    <span className="font-semibold text-sm">{statsData.count}</span>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+          <ChevronDown
+            size={20}
+            className={`transform transition-transform text-gray-500 ${showTimeBlockStats ? 'rotate-180' : ''}`}
+          />
+        </button>
+
+        {showTimeBlockStats && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-3">
+            {['deep', 'collaborative', 'quick', 'systematic'].map(block => {
+              const info = getTimeBlockInfo(block);
+              const statsData = getTimeBlockStats(block);
+              const Icon = info.icon;
+              return (
+                <div key={block} className={`${info.color} border-2 rounded-lg p-4`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      <Icon size={20} className="mr-2" />
+                      <span className="font-bold">{info.label}</span>
+                    </div>
+                    <span className="text-sm font-semibold">{statsData.count} tasks</span>
+                  </div>
+                  <p className="text-xs mb-2">{info.description}</p>
+                  <p className="text-xs font-medium">{info.bestTime}</p>
+                  <p className="text-xs mt-1 font-semibold">⏱️ {statsData.time} phút</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Add Task Form */}
@@ -1160,8 +1240,97 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Decision Framework Guide */}
-      <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
+      {/* Floating Help Button */}
+      <button
+        onClick={() => setShowFrameworkGuide(true)}
+        className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg z-40 transition-all hover:scale-110"
+        aria-label="Show framework guide"
+      >
+        <HelpCircle size={24} />
+      </button>
+
+      {/* Framework Guide Modal/Drawer */}
+      {showFrameworkGuide && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end md:items-center md:justify-center">
+          <div className="bg-white w-full max-h-[85vh] md:max-w-4xl md:max-h-[90vh] rounded-t-2xl md:rounded-2xl overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+              <h3 className="font-bold text-xl text-gray-800">📚 Framework Guide</h3>
+              <button
+                onClick={() => setShowFrameworkGuide(false)}
+                className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Content - Scrollable */}
+            <div className="overflow-y-auto p-6">
+              <div className="space-y-6">
+                {/* 4D Decision Framework */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800 mb-3">💡 4D Decision Framework</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="border-l-4 border-green-500 pl-4">
+                      <p className="font-semibold text-green-700">✅ DO - Làm ngay</p>
+                      <p className="text-sm text-gray-600">High ICE (≥7.5) + High Impact (≥7). Tasks này quan trọng và bạn có khả năng làm tốt.</p>
+                    </div>
+                    <div className="border-l-4 border-blue-500 pl-4">
+                      <p className="font-semibold text-blue-700">👤 DELEGATE - Giao cho người khác</p>
+                      <p className="text-sm text-gray-600">Low Confidence (&lt;5) hoặc High Impact + Low Ease. Người khác có thể làm tốt hơn.</p>
+                    </div>
+                    <div className="border-l-4 border-yellow-500 pl-4">
+                      <p className="font-semibold text-yellow-700">⏸️ DELAY - Hoãn lại</p>
+                      <p className="text-sm text-gray-600">Medium ICE (5-7.5). Quan trọng nhưng chưa cấp thiết.</p>
+                    </div>
+                    <div className="border-l-4 border-red-500 pl-4">
+                      <p className="font-semibold text-red-700">🗑️ DELETE - Loại bỏ</p>
+                      <p className="text-sm text-gray-600">Low Impact (&lt;5) + Low ICE (&lt;5). Không đáng để làm.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Time Blocking */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800 mb-3">⏰ Time Blocking Strategy</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                      <p className="font-semibold text-indigo-800 mb-1">🧠 Deep Work</p>
+                      <p className="text-sm text-gray-600">Cần tập trung cao, không bị gián đoạn. Best: Sáng sớm hoặc sau giờ nghỉ trưa.</p>
+                    </div>
+                    <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-4">
+                      <p className="font-semibold text-cyan-800 mb-1">👥 Collaborative</p>
+                      <p className="text-sm text-gray-600">Cần tương tác, feedback. Best: Giờ hành chính khi team online.</p>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                      <p className="font-semibold text-amber-800 mb-1">⚡ Quick Wins</p>
+                      <p className="text-sm text-gray-600">Nhanh gọn 5-30 phút. Best: Khi chờ đợi hoặc giữa các task lớn.</p>
+                    </div>
+                    <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
+                      <p className="font-semibold text-rose-800 mb-1">🔧 Systematic</p>
+                      <p className="text-sm text-gray-600">Setup một lần, chạy tự động. Best: Khi có thời gian yên tĩnh.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ICE Scoring Info */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800 mb-3">🎯 ICE Scoring System</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                    <p className="text-sm"><span className="font-semibold">Impact (1-10):</span> Tác động đến mục tiêu của bạn</p>
+                    <p className="text-sm"><span className="font-semibold">Confidence (1-10):</span> Độ chắc chắn hoàn thành</p>
+                    <p className="text-sm"><span className="font-semibold">Ease (1-10):</span> Độ dễ thực hiện</p>
+                    <p className="text-sm mt-3"><span className="font-semibold">ICE Score:</span> {useWeightedScoring ? `Weighted formula: I(${iceWeights.impact}%) + C(${iceWeights.confidence}%) + E(${iceWeights.ease}%)` : 'Simple average of the 3 factors'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Old Decision Framework Guide - Hidden, replaced by modal */}
+      <div className="hidden mt-6 bg-white rounded-lg shadow-lg p-6">
         <h3 className="text-lg font-bold text-gray-800 mb-3">💡 4D Decision Framework:</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div className="border-l-4 border-green-500 pl-4">
