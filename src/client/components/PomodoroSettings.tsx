@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { X, RotateCcw } from 'lucide-react';
-import type { PomodoroSettings } from '../../utils/types';
-import { DEFAULT_POMODORO_SETTINGS } from '../../utils/types';
+import { useState } from "react";
+import { X, RotateCcw } from "lucide-react";
+import type { PomodoroSettings } from "../../utils/types";
+import { DEFAULT_POMODORO_SETTINGS } from "../../utils/types";
 
 interface PomodoroSettingsProps {
   isOpen: boolean;
@@ -14,7 +14,7 @@ export function PomodoroSettingsComponent({
   isOpen,
   currentSettings,
   onClose,
-  onSave
+  onSave,
 }: PomodoroSettingsProps) {
   const [settings, setSettings] = useState<PomodoroSettings>(currentSettings);
 
@@ -59,7 +59,12 @@ export function PomodoroSettingsComponent({
                 max="60"
                 step="5"
                 value={settings.workDuration}
-                onChange={(e) => setSettings({ ...settings, workDuration: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    workDuration: parseInt(e.target.value),
+                  })
+                }
                 className="flex-1 h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
               />
               <div className="flex items-center gap-2 min-w-[100px]">
@@ -68,13 +73,20 @@ export function PomodoroSettingsComponent({
                   min="15"
                   max="60"
                   value={settings.workDuration}
-                  onChange={(e) => setSettings({ ...settings, workDuration: parseInt(e.target.value) || 25 })}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      workDuration: parseInt(e.target.value) || 25,
+                    })
+                  }
                   className="w-16 px-3 py-2 border border-gray-300 rounded-lg text-center font-semibold"
                 />
                 <span className="text-gray-600">min</span>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">Focused work session length (15-60 minutes)</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Focused work session length (15-60 minutes)
+            </p>
           </div>
 
           {/* Short Break Duration */}
@@ -89,7 +101,12 @@ export function PomodoroSettingsComponent({
                 max="15"
                 step="1"
                 value={settings.shortBreakDuration}
-                onChange={(e) => setSettings({ ...settings, shortBreakDuration: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    shortBreakDuration: parseInt(e.target.value),
+                  })
+                }
                 className="flex-1 h-2 bg-green-200 rounded-lg appearance-none cursor-pointer"
               />
               <div className="flex items-center gap-2 min-w-[100px]">
@@ -98,13 +115,20 @@ export function PomodoroSettingsComponent({
                   min="3"
                   max="15"
                   value={settings.shortBreakDuration}
-                  onChange={(e) => setSettings({ ...settings, shortBreakDuration: parseInt(e.target.value) || 5 })}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      shortBreakDuration: parseInt(e.target.value) || 5,
+                    })
+                  }
                   className="w-16 px-3 py-2 border border-gray-300 rounded-lg text-center font-semibold"
                 />
                 <span className="text-gray-600">min</span>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">Short rest between work sessions (3-15 minutes)</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Short rest between work sessions (3-15 minutes)
+            </p>
           </div>
 
           {/* Long Break Duration */}
@@ -119,7 +143,12 @@ export function PomodoroSettingsComponent({
                 max="30"
                 step="5"
                 value={settings.longBreakDuration}
-                onChange={(e) => setSettings({ ...settings, longBreakDuration: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    longBreakDuration: parseInt(e.target.value),
+                  })
+                }
                 className="flex-1 h-2 bg-teal-200 rounded-lg appearance-none cursor-pointer"
               />
               <div className="flex items-center gap-2 min-w-[100px]">
@@ -128,13 +157,20 @@ export function PomodoroSettingsComponent({
                   min="10"
                   max="30"
                   value={settings.longBreakDuration}
-                  onChange={(e) => setSettings({ ...settings, longBreakDuration: parseInt(e.target.value) || 15 })}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      longBreakDuration: parseInt(e.target.value) || 15,
+                    })
+                  }
                   className="w-16 px-3 py-2 border border-gray-300 rounded-lg text-center font-semibold"
                 />
                 <span className="text-gray-600">min</span>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">Longer rest after completing a cycle (10-30 minutes)</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Longer rest after completing a cycle (10-30 minutes)
+            </p>
           </div>
 
           {/* Pomodoros Until Long Break */}
@@ -149,7 +185,12 @@ export function PomodoroSettingsComponent({
                 max="8"
                 step="1"
                 value={settings.pomodorosUntilLongBreak}
-                onChange={(e) => setSettings({ ...settings, pomodorosUntilLongBreak: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    pomodorosUntilLongBreak: parseInt(e.target.value),
+                  })
+                }
                 className="flex-1 h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer"
               />
               <div className="flex items-center gap-2 min-w-[100px]">
@@ -158,13 +199,20 @@ export function PomodoroSettingsComponent({
                   min="2"
                   max="8"
                   value={settings.pomodorosUntilLongBreak}
-                  onChange={(e) => setSettings({ ...settings, pomodorosUntilLongBreak: parseInt(e.target.value) || 4 })}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      pomodorosUntilLongBreak: parseInt(e.target.value) || 4,
+                    })
+                  }
                   className="w-16 px-3 py-2 border border-gray-300 rounded-lg text-center font-semibold"
                 />
                 <span className="text-gray-600">🍅</span>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">Number of work sessions before taking a long break (2-8)</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Number of work sessions before taking a long break (2-8)
+            </p>
           </div>
 
           {/* Checkboxes */}
@@ -173,12 +221,21 @@ export function PomodoroSettingsComponent({
               <input
                 type="checkbox"
                 checked={settings.autoStartBreaks}
-                onChange={(e) => setSettings({ ...settings, autoStartBreaks: e.target.checked })}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    autoStartBreaks: e.target.checked,
+                  })
+                }
                 className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
               />
               <div>
-                <span className="font-medium text-gray-700">Auto-start breaks</span>
-                <p className="text-xs text-gray-500">Automatically start break timer after work session ends</p>
+                <span className="font-medium text-gray-700">
+                  Auto-start breaks
+                </span>
+                <p className="text-xs text-gray-500">
+                  Automatically start break timer after work session ends
+                </p>
               </div>
             </label>
 
@@ -186,12 +243,21 @@ export function PomodoroSettingsComponent({
               <input
                 type="checkbox"
                 checked={settings.autoStartPomodoros}
-                onChange={(e) => setSettings({ ...settings, autoStartPomodoros: e.target.checked })}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    autoStartPomodoros: e.target.checked,
+                  })
+                }
                 className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
               />
               <div>
-                <span className="font-medium text-gray-700">Auto-start next pomodoro</span>
-                <p className="text-xs text-gray-500">Automatically start work session after break ends</p>
+                <span className="font-medium text-gray-700">
+                  Auto-start next pomodoro
+                </span>
+                <p className="text-xs text-gray-500">
+                  Automatically start work session after break ends
+                </p>
               </div>
             </label>
 
@@ -199,12 +265,18 @@ export function PomodoroSettingsComponent({
               <input
                 type="checkbox"
                 checked={settings.playSound}
-                onChange={(e) => setSettings({ ...settings, playSound: e.target.checked })}
+                onChange={(e) =>
+                  setSettings({ ...settings, playSound: e.target.checked })
+                }
                 className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
               />
               <div>
-                <span className="font-medium text-gray-700">Play completion sound</span>
-                <p className="text-xs text-gray-500">Beep when a session completes</p>
+                <span className="font-medium text-gray-700">
+                  Play completion sound
+                </span>
+                <p className="text-xs text-gray-500">
+                  Beep when a session completes
+                </p>
               </div>
             </label>
 
@@ -212,12 +284,21 @@ export function PomodoroSettingsComponent({
               <input
                 type="checkbox"
                 checked={settings.showNotifications}
-                onChange={(e) => setSettings({ ...settings, showNotifications: e.target.checked })}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    showNotifications: e.target.checked,
+                  })
+                }
                 className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
               />
               <div>
-                <span className="font-medium text-gray-700">Show desktop notifications</span>
-                <p className="text-xs text-gray-500">Display system notification when session completes</p>
+                <span className="font-medium text-gray-700">
+                  Show desktop notifications
+                </span>
+                <p className="text-xs text-gray-500">
+                  Display system notification when session completes
+                </p>
               </div>
             </label>
           </div>

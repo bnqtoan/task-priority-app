@@ -9,13 +9,17 @@ import type {
   HourlyTimeData,
   TopTask,
   ProductivityMetrics,
-  ReportData
-} from './types';
+  ReportData,
+} from "./types";
 
 /**
  * Calculate simple ICE score
  */
-function calculateICEScore(impact: number, confidence: number, ease: number): number {
+function calculateICEScore(
+  impact: number,
+  confidence: number,
+  ease: number,
+): number {
   return parseFloat(((impact + confidence + ease) / 3).toFixed(1));
 }
 
@@ -27,13 +31,13 @@ export function getDateRangeForPreset(preset: TimeRangePreset): DateRange {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   switch (preset) {
-    case 'today': {
+    case "today": {
       const end = new Date(today);
       end.setHours(23, 59, 59, 999);
       return { start: today, end, preset };
     }
 
-    case 'week': {
+    case "week": {
       const start = new Date(today);
       const dayOfWeek = start.getDay();
       start.setDate(start.getDate() - dayOfWeek); // Start from Sunday
@@ -43,14 +47,14 @@ export function getDateRangeForPreset(preset: TimeRangePreset): DateRange {
       return { start, end, preset };
     }
 
-    case 'month': {
+    case "month": {
       const start = new Date(now.getFullYear(), now.getMonth(), 1);
       const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       end.setHours(23, 59, 59, 999);
       return { start, end, preset };
     }
 
-    case 'last7': {
+    case "last7": {
       const start = new Date(today);
       start.setDate(start.getDate() - 6);
       const end = new Date(today);
@@ -58,7 +62,7 @@ export function getDateRangeForPreset(preset: TimeRangePreset): DateRange {
       return { start, end, preset };
     }
 
-    case 'last30': {
+    case "last30": {
       const start = new Date(today);
       start.setDate(start.getDate() - 29);
       const end = new Date(today);
@@ -66,7 +70,7 @@ export function getDateRangeForPreset(preset: TimeRangePreset): DateRange {
       return { start, end, preset };
     }
 
-    case 'last90': {
+    case "last90": {
       const start = new Date(today);
       start.setDate(start.getDate() - 89);
       const end = new Date(today);
@@ -74,24 +78,27 @@ export function getDateRangeForPreset(preset: TimeRangePreset): DateRange {
       return { start, end, preset };
     }
 
-    case 'all': {
+    case "all": {
       const start = new Date(2000, 0, 1); // Arbitrary early date
       const end = new Date(today);
       end.setHours(23, 59, 59, 999);
       return { start, end, preset };
     }
 
-    case 'custom':
+    case "custom":
     default:
-      return { start: today, end: new Date(), preset: 'custom' };
+      return { start: today, end: new Date(), preset: "custom" };
   }
 }
 
 /**
  * Filter tasks by date range
  */
-export function filterTasksByDateRange(tasks: Task[], dateRange: DateRange): Task[] {
-  return tasks.filter(task => {
+export function filterTasksByDateRange(
+  tasks: Task[],
+  dateRange: DateRange,
+): Task[] {
+  return tasks.filter((task) => {
     if (!task.completedAt) return false;
     const completedDate = new Date(task.completedAt);
     return completedDate >= dateRange.start && completedDate <= dateRange.end;
@@ -110,13 +117,16 @@ export function calculateTotalTime(timeEntries: TimeEntry[]): number {
 /**
  * Get all time entries for tasks in date range
  */
-export function getTimeEntriesForDateRange(tasks: Task[], dateRange: DateRange): TimeEntry[] {
+export function getTimeEntriesForDateRange(
+  tasks: Task[],
+  dateRange: DateRange,
+): TimeEntry[] {
   const allEntries: TimeEntry[] = [];
 
-  tasks.forEach(task => {
+  tasks.forEach((task) => {
     // If task has time entries, use them
     if (task.timeEntries && task.timeEntries.length > 0) {
-      const filteredEntries = task.timeEntries.filter(entry => {
+      const filteredEntries = task.timeEntries.filter((entry) => {
         const entryDate = new Date(entry.startTime);
         return entryDate >= dateRange.start && entryDate <= dateRange.end;
       });
@@ -136,7 +146,7 @@ export function getTimeEntriesForDateRange(tasks: Task[], dateRange: DateRange):
           startTime: entryDateObj,
           endTime: new Date(entryDateObj.getTime() + task.actualTime * 60000),
           duration: task.actualTime,
-          type: 'regular'
+          type: "regular",
         });
       }
     }
@@ -148,19 +158,30 @@ export function getTimeEntriesForDateRange(tasks: Task[], dateRange: DateRange):
 /**
  * Calculate time statistics
  */
-export function calculateTimeStats(tasks: Task[], dateRange: DateRange): TimeStats {
+export function calculateTimeStats(
+  tasks: Task[],
+  dateRange: DateRange,
+): TimeStats {
   const filteredTasks = filterTasksByDateRange(tasks, dateRange);
   const timeEntries = getTimeEntriesForDateRange(tasks, dateRange);
 
-  const completedTasks = filteredTasks.filter(t => t.status === 'completed').length;
-  const activeTasks = tasks.filter(t => t.status === 'active').length;
+  const completedTasks = filteredTasks.filter(
+    (t) => t.status === "completed",
+  ).length;
+  const activeTasks = tasks.filter((t) => t.status === "active").length;
 
-  const focusSessions = timeEntries.filter(e => e.type === 'focus').length;
+  const focusSessions = timeEntries.filter((e) => e.type === "focus").length;
   const totalMinutes = calculateTotalTime(timeEntries);
 
-  const estimatedTime = filteredTasks.reduce((sum, task) => sum + (task.estimatedTime || 0), 0);
+  const estimatedTime = filteredTasks.reduce(
+    (sum, task) => sum + (task.estimatedTime || 0),
+    0,
+  );
   const actualTime = totalMinutes;
-  const variance = estimatedTime > 0 ? ((actualTime - estimatedTime) / estimatedTime) * 100 : 0;
+  const variance =
+    estimatedTime > 0
+      ? ((actualTime - estimatedTime) / estimatedTime) * 100
+      : 0;
 
   return {
     totalMinutes,
@@ -172,7 +193,7 @@ export function calculateTimeStats(tasks: Task[], dateRange: DateRange): TimeSta
     avgTimePerTask: completedTasks > 0 ? totalMinutes / completedTasks : 0,
     estimatedTime,
     actualTime,
-    variance
+    variance,
   };
 }
 
@@ -182,30 +203,33 @@ export function calculateTimeStats(tasks: Task[], dateRange: DateRange): TimeSta
 export function groupTimeByCategory<K extends keyof Task>(
   tasks: Task[],
   dateRange: DateRange,
-  categoryKey: K
+  categoryKey: K,
 ): TimeByCategory[] {
   const filteredTasks = filterTasksByDateRange(tasks, dateRange);
   const categoryMap = new Map<string, { minutes: number; taskCount: number }>();
 
-  filteredTasks.forEach(task => {
+  filteredTasks.forEach((task) => {
     const category = String(task[categoryKey]);
     const minutes = task.actualTime || 0;
 
     const existing = categoryMap.get(category) || { minutes: 0, taskCount: 0 };
     categoryMap.set(category, {
       minutes: existing.minutes + minutes,
-      taskCount: existing.taskCount + 1
+      taskCount: existing.taskCount + 1,
     });
   });
 
-  const totalMinutes = Array.from(categoryMap.values()).reduce((sum, data) => sum + data.minutes, 0);
+  const totalMinutes = Array.from(categoryMap.values()).reduce(
+    (sum, data) => sum + data.minutes,
+    0,
+  );
 
   return Array.from(categoryMap.entries())
     .map(([category, data]) => ({
       category,
       minutes: data.minutes,
       percentage: totalMinutes > 0 ? (data.minutes / totalMinutes) * 100 : 0,
-      taskCount: data.taskCount
+      taskCount: data.taskCount,
     }))
     .sort((a, b) => b.minutes - a.minutes);
 }
@@ -213,34 +237,40 @@ export function groupTimeByCategory<K extends keyof Task>(
 /**
  * Generate daily time data
  */
-export function generateDailyTimeData(tasks: Task[], dateRange: DateRange): DailyTimeData[] {
-  const dailyMap = new Map<string, { minutes: number; completedTasks: number; focusSessions: number }>();
+export function generateDailyTimeData(
+  tasks: Task[],
+  dateRange: DateRange,
+): DailyTimeData[] {
+  const dailyMap = new Map<
+    string,
+    { minutes: number; completedTasks: number; focusSessions: number }
+  >();
 
   // Initialize all dates in range
   const currentDate = new Date(dateRange.start);
   while (currentDate <= dateRange.end) {
-    const dateStr = currentDate.toISOString().split('T')[0];
+    const dateStr = currentDate.toISOString().split("T")[0];
     dailyMap.set(dateStr, { minutes: 0, completedTasks: 0, focusSessions: 0 });
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
   // Fill in actual data
   const timeEntries = getTimeEntriesForDateRange(tasks, dateRange);
-  timeEntries.forEach(entry => {
-    const dateStr = new Date(entry.startTime).toISOString().split('T')[0];
+  timeEntries.forEach((entry) => {
+    const dateStr = new Date(entry.startTime).toISOString().split("T")[0];
     const existing = dailyMap.get(dateStr);
     if (existing) {
       existing.minutes += entry.duration || 0;
-      if (entry.type === 'focus') {
+      if (entry.type === "focus") {
         existing.focusSessions += 1;
       }
     }
   });
 
   const filteredTasks = filterTasksByDateRange(tasks, dateRange);
-  filteredTasks.forEach(task => {
+  filteredTasks.forEach((task) => {
     if (task.completedAt) {
-      const dateStr = new Date(task.completedAt).toISOString().split('T')[0];
+      const dateStr = new Date(task.completedAt).toISOString().split("T")[0];
       const existing = dailyMap.get(dateStr);
       if (existing) {
         existing.completedTasks += 1;
@@ -253,7 +283,7 @@ export function generateDailyTimeData(tasks: Task[], dateRange: DateRange): Dail
       date,
       totalMinutes: data.minutes,
       completedTasks: data.completedTasks,
-      focusSessions: data.focusSessions
+      focusSessions: data.focusSessions,
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
@@ -261,7 +291,10 @@ export function generateDailyTimeData(tasks: Task[], dateRange: DateRange): Dail
 /**
  * Generate hourly time data (for time-of-day insights)
  */
-export function generateHourlyTimeData(tasks: Task[], dateRange: DateRange): HourlyTimeData[] {
+export function generateHourlyTimeData(
+  tasks: Task[],
+  dateRange: DateRange,
+): HourlyTimeData[] {
   const hourlyMap = new Map<number, number>();
 
   // Initialize all hours
@@ -270,7 +303,7 @@ export function generateHourlyTimeData(tasks: Task[], dateRange: DateRange): Hou
   }
 
   const timeEntries = getTimeEntriesForDateRange(tasks, dateRange);
-  timeEntries.forEach(entry => {
+  timeEntries.forEach((entry) => {
     const hour = new Date(entry.startTime).getHours();
     hourlyMap.set(hour, (hourlyMap.get(hour) || 0) + (entry.duration || 0));
   });
@@ -279,7 +312,7 @@ export function generateHourlyTimeData(tasks: Task[], dateRange: DateRange): Hou
     .map(([hour, minutes]) => ({
       hour,
       minutes,
-      label: `${hour.toString().padStart(2, '0')}:00`
+      label: `${hour.toString().padStart(2, "0")}:00`,
     }))
     .sort((a, b) => a.hour - b.hour);
 }
@@ -287,18 +320,26 @@ export function generateHourlyTimeData(tasks: Task[], dateRange: DateRange): Hou
 /**
  * Get top tasks by time spent
  */
-export function getTopTasks(tasks: Task[], dateRange: DateRange, limit: number = 10): TopTask[] {
+export function getTopTasks(
+  tasks: Task[],
+  dateRange: DateRange,
+  limit: number = 10,
+): TopTask[] {
   const filteredTasks = filterTasksByDateRange(tasks, dateRange);
-  const totalMinutes = filteredTasks.reduce((sum, task) => sum + (task.actualTime || 0), 0);
+  const totalMinutes = filteredTasks.reduce(
+    (sum, task) => sum + (task.actualTime || 0),
+    0,
+  );
 
   return filteredTasks
-    .map(task => ({
+    .map((task) => ({
       id: task.id,
       name: task.name,
       minutes: task.actualTime || 0,
-      percentage: totalMinutes > 0 ? ((task.actualTime || 0) / totalMinutes) * 100 : 0,
+      percentage:
+        totalMinutes > 0 ? ((task.actualTime || 0) / totalMinutes) * 100 : 0,
       type: task.type,
-      iceScore: calculateICEScore(task.impact, task.confidence, task.ease)
+      iceScore: calculateICEScore(task.impact, task.confidence, task.ease),
     }))
     .sort((a, b) => b.minutes - a.minutes)
     .slice(0, limit);
@@ -310,62 +351,81 @@ export function getTopTasks(tasks: Task[], dateRange: DateRange, limit: number =
 export function calculateProductivityMetrics(
   tasks: Task[],
   dateRange: DateRange,
-  timeStats: TimeStats
+  timeStats: TimeStats,
 ): ProductivityMetrics {
   const suggestions: string[] = [];
 
   // Focus time ratio
   const timeEntries = getTimeEntriesForDateRange(tasks, dateRange);
-  const focusMinutes = timeEntries.filter(e => e.type === 'focus').reduce((sum, e) => sum + (e.duration || 0), 0);
-  const focusTimeRatio = timeStats.totalMinutes > 0 ? focusMinutes / timeStats.totalMinutes : 0;
+  const focusMinutes = timeEntries
+    .filter((e) => e.type === "focus")
+    .reduce((sum, e) => sum + (e.duration || 0), 0);
+  const focusTimeRatio =
+    timeStats.totalMinutes > 0 ? focusMinutes / timeStats.totalMinutes : 0;
 
   if (focusTimeRatio < 0.5) {
-    suggestions.push('Try to increase focus time sessions for better concentration');
+    suggestions.push(
+      "Try to increase focus time sessions for better concentration",
+    );
   }
 
   // Completion rate
-  const completionRate = timeStats.totalTasks > 0 ? timeStats.completedTasks / timeStats.totalTasks : 0;
+  const completionRate =
+    timeStats.totalTasks > 0
+      ? timeStats.completedTasks / timeStats.totalTasks
+      : 0;
 
   if (completionRate < 0.7) {
-    suggestions.push('Consider breaking down tasks into smaller, more manageable pieces');
+    suggestions.push(
+      "Consider breaking down tasks into smaller, more manageable pieces",
+    );
   }
 
   // Estimate accuracy
-  const estimateAccuracy = Math.abs(timeStats.variance) < 20 ? 1 - (Math.abs(timeStats.variance) / 100) : 0.8;
+  const estimateAccuracy =
+    Math.abs(timeStats.variance) < 20
+      ? 1 - Math.abs(timeStats.variance) / 100
+      : 0.8;
 
   if (Math.abs(timeStats.variance) > 30) {
     if (timeStats.variance > 0) {
-      suggestions.push('Tasks are taking longer than estimated - consider adding buffer time');
+      suggestions.push(
+        "Tasks are taking longer than estimated - consider adding buffer time",
+      );
     } else {
-      suggestions.push('Tasks are finishing faster than estimated - you can be more ambitious');
+      suggestions.push(
+        "Tasks are finishing faster than estimated - you can be more ambitious",
+      );
     }
   }
 
   // Pomodoro completion rate (approximate)
   const expectedPomodoros = Math.floor(timeStats.totalMinutes / 25);
-  const pomodoroCompletionRate = expectedPomodoros > 0 ? timeStats.pomodoros / expectedPomodoros : 1;
+  const pomodoroCompletionRate =
+    expectedPomodoros > 0 ? timeStats.pomodoros / expectedPomodoros : 1;
 
   // Deep work ratio
   const filteredTasks = filterTasksByDateRange(tasks, dateRange);
   const deepWorkMinutes = filteredTasks
-    .filter(t => t.timeBlock === 'deep')
+    .filter((t) => t.timeBlock === "deep")
     .reduce((sum, t) => sum + (t.actualTime || 0), 0);
-  const deepWorkRatio = timeStats.totalMinutes > 0 ? deepWorkMinutes / timeStats.totalMinutes : 0;
+  const deepWorkRatio =
+    timeStats.totalMinutes > 0 ? deepWorkMinutes / timeStats.totalMinutes : 0;
 
   if (deepWorkRatio < 0.3) {
-    suggestions.push('Schedule more deep work blocks for complex tasks');
+    suggestions.push("Schedule more deep work blocks for complex tasks");
   }
 
   // Calculate overall productivity score (0-100)
   const score = Math.round(
-    (focusTimeRatio * 25) +
-    (completionRate * 25) +
-    (estimateAccuracy * 25) +
-    (deepWorkRatio * 25)
+    focusTimeRatio * 25 +
+      completionRate * 25 +
+      estimateAccuracy * 25 +
+      deepWorkRatio * 25,
   );
 
   if (suggestions.length === 0) {
-    suggestions.push('Great work! Keep maintaining your productive habits');
+    suggestions.push("Great work! Keep maintaining your productive habits");
   }
 
   return {
@@ -375,26 +435,33 @@ export function calculateProductivityMetrics(
     estimateAccuracy,
     pomodoroCompletionRate,
     deepWorkRatio,
-    suggestions
+    suggestions,
   };
 }
 
 /**
  * Generate complete report data
  */
-export function generateReportData(tasks: Task[], dateRange: DateRange): ReportData {
+export function generateReportData(
+  tasks: Task[],
+  dateRange: DateRange,
+): ReportData {
   const timeStats = calculateTimeStats(tasks, dateRange);
 
   return {
     dateRange,
     timeStats,
-    byType: groupTimeByCategory(tasks, dateRange, 'type'),
-    byTimeBlock: groupTimeByCategory(tasks, dateRange, 'timeBlock'),
-    byDecision: groupTimeByCategory(tasks, dateRange, 'decision'),
+    byType: groupTimeByCategory(tasks, dateRange, "type"),
+    byTimeBlock: groupTimeByCategory(tasks, dateRange, "timeBlock"),
+    byDecision: groupTimeByCategory(tasks, dateRange, "decision"),
     dailyData: generateDailyTimeData(tasks, dateRange),
     hourlyData: generateHourlyTimeData(tasks, dateRange),
     topTasks: getTopTasks(tasks, dateRange),
-    productivityMetrics: calculateProductivityMetrics(tasks, dateRange, timeStats)
+    productivityMetrics: calculateProductivityMetrics(
+      tasks,
+      dateRange,
+      timeStats,
+    ),
   };
 }
 
@@ -428,25 +495,36 @@ export function formatPercentage(value: number): string {
  */
 export function generateEndOfDayInsights(
   tasks: Task[],
-  date: Date = new Date()
-): import('./types').EndOfDayInsights {
+  date: Date = new Date(),
+): import("./types").EndOfDayInsights {
   const today = new Date(date);
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const dateRange: import('./types').DateRange = { start: today, end: tomorrow, preset: 'today' };
+  const dateRange: import("./types").DateRange = {
+    start: today,
+    end: tomorrow,
+    preset: "today",
+  };
 
   // Get time entries for today
   const todayEntries = getTimeEntriesForDateRange(tasks, dateRange);
 
   // Calculate neglected high-priority tasks (ICE > 7, worked < 15 mins today)
-  const neglectedPriorities: import('./types').NeglectedTask[] = tasks
-    .filter(t => t.status === 'active')
-    .map(task => {
-      const iceScore = calculateICEScore(task.impact, task.confidence, task.ease);
-      const taskEntries = todayEntries.filter(e => e.taskId === task.id);
-      const minutesToday = taskEntries.reduce((sum, e) => sum + (e.duration || 0), 0);
+  const neglectedPriorities: import("./types").NeglectedTask[] = tasks
+    .filter((t) => t.status === "active")
+    .map((task) => {
+      const iceScore = calculateICEScore(
+        task.impact,
+        task.confidence,
+        task.ease,
+      );
+      const taskEntries = todayEntries.filter((e) => e.taskId === task.id);
+      const minutesToday = taskEntries.reduce(
+        (sum, e) => sum + (e.duration || 0),
+        0,
+      );
 
       return { task, iceScore, minutesToday };
     })
@@ -457,31 +535,32 @@ export function generateEndOfDayInsights(
       task,
       iceScore,
       minutesToday,
-      reason: minutesToday === 0
-        ? 'Not started today despite high priority'
-        : `Only ${minutesToday} minutes invested today`
+      reason:
+        minutesToday === 0
+          ? "Not started today despite high priority"
+          : `Only ${minutesToday} minutes invested today`,
     }));
 
   // Completion momentum
-  const completedToday = tasks.filter(t => {
+  const completedToday = tasks.filter((t) => {
     if (!t.completedAt) return false;
     const completedDate = new Date(t.completedAt);
     return completedDate >= today && completedDate < tomorrow;
   });
 
-  const startedToday = tasks.filter(t => {
+  const startedToday = tasks.filter((t) => {
     const createdDate = new Date(t.createdAt);
     return createdDate >= today && createdDate < tomorrow;
   });
 
   const topCompletions = completedToday
-    .map(task => ({
+    .map((task) => ({
       id: task.id,
       name: task.name,
       minutes: task.actualTime || 0,
       percentage: 0, // Will be calculated if needed
       type: task.type,
-      iceScore: calculateICEScore(task.impact, task.confidence, task.ease)
+      iceScore: calculateICEScore(task.impact, task.confidence, task.ease),
     }))
     .sort((a, b) => b.iceScore - a.iceScore)
     .slice(0, 3);
@@ -490,19 +569,23 @@ export function generateEndOfDayInsights(
   const plannedByType: { [key: string]: number } = {};
   const actualByType: { [key: string]: number } = {};
 
-  tasks.filter(t => t.status !== 'archived').forEach(task => {
-    plannedByType[task.type] = (plannedByType[task.type] || 0) + (task.estimatedTime || 0);
-  });
+  tasks
+    .filter((t) => t.status !== "archived")
+    .forEach((task) => {
+      plannedByType[task.type] =
+        (plannedByType[task.type] || 0) + (task.estimatedTime || 0);
+    });
 
-  todayEntries.forEach(entry => {
-    const task = tasks.find(t => t.id === entry.taskId);
+  todayEntries.forEach((entry) => {
+    const task = tasks.find((t) => t.id === entry.taskId);
     if (task) {
-      actualByType[task.type] = (actualByType[task.type] || 0) + (entry.duration || 0);
+      actualByType[task.type] =
+        (actualByType[task.type] || 0) + (entry.duration || 0);
     }
   });
 
   const variance: { [key: string]: number } = {};
-  Object.keys({ ...plannedByType, ...actualByType }).forEach(type => {
+  Object.keys({ ...plannedByType, ...actualByType }).forEach((type) => {
     const planned = plannedByType[type] || 0;
     const actual = actualByType[type] || 0;
     variance[type] = planned > 0 ? ((actual - planned) / planned) * 100 : 0;
@@ -510,67 +593,79 @@ export function generateEndOfDayInsights(
 
   // Energy alignment (peak hours 9-12, 14-16)
   const peakHours = [9, 10, 11, 14, 15, 16];
-  const deepWorkEntries = todayEntries.filter(e => {
-    const task = tasks.find(t => t.id === e.taskId);
-    return task?.timeBlock === 'deep';
+  const deepWorkEntries = todayEntries.filter((e) => {
+    const task = tasks.find((t) => t.id === e.taskId);
+    return task?.timeBlock === "deep";
   });
 
   const deepWorkDuringPeak = deepWorkEntries
-    .filter(e => {
+    .filter((e) => {
       const hour = new Date(e.startTime).getHours();
       return peakHours.includes(hour);
     })
     .reduce((sum, e) => sum + (e.duration || 0), 0);
 
-  const deepWorkOffPeak = deepWorkEntries
-    .reduce((sum, e) => sum + (e.duration || 0), 0) - deepWorkDuringPeak;
+  const deepWorkOffPeak =
+    deepWorkEntries.reduce((sum, e) => sum + (e.duration || 0), 0) -
+    deepWorkDuringPeak;
 
   const totalDeepWork = deepWorkDuringPeak + deepWorkOffPeak;
-  const alignmentScore = totalDeepWork > 0
-    ? Math.round((deepWorkDuringPeak / totalDeepWork) * 100)
-    : 50;
+  const alignmentScore =
+    totalDeepWork > 0
+      ? Math.round((deepWorkDuringPeak / totalDeepWork) * 100)
+      : 50;
 
-  const recommendation = alignmentScore < 50
-    ? 'Try scheduling deep work during peak energy hours (9-12am, 2-4pm)'
-    : alignmentScore < 70
-    ? 'Good alignment! Consider blocking more peak hours for deep work'
-    : 'Excellent! Your deep work is well-aligned with peak energy hours';
+  const recommendation =
+    alignmentScore < 50
+      ? "Try scheduling deep work during peak energy hours (9-12am, 2-4pm)"
+      : alignmentScore < 70
+        ? "Good alignment! Consider blocking more peak hours for deep work"
+        : "Excellent! Your deep work is well-aligned with peak energy hours";
 
   // Focus quality
-  const focusEntries = todayEntries.filter(e => e.type === 'focus');
+  const focusEntries = todayEntries.filter((e) => e.type === "focus");
   const totalSessions = focusEntries.length;
-  const averageSessionMinutes = totalSessions > 0
-    ? focusEntries.reduce((sum, e) => sum + (e.duration || 0), 0) / totalSessions
-    : 0;
-  const longestSession = totalSessions > 0
-    ? Math.max(...focusEntries.map(e => e.duration || 0))
-    : 0;
+  const averageSessionMinutes =
+    totalSessions > 0
+      ? focusEntries.reduce((sum, e) => sum + (e.duration || 0), 0) /
+        totalSessions
+      : 0;
+  const longestSession =
+    totalSessions > 0
+      ? Math.max(...focusEntries.map((e) => e.duration || 0))
+      : 0;
 
   // Estimate interruptions (sessions < 10 mins)
-  const interruptionCount = focusEntries.filter(e => (e.duration || 0) < 10).length;
+  const interruptionCount = focusEntries.filter(
+    (e) => (e.duration || 0) < 10,
+  ).length;
 
   // Tomorrow's recommendations (top 3 active tasks by ICE score with <50% time completion)
-  const tomorrowRecommendations: import('./types').TaskScheduleSuggestion[] = tasks
-    .filter(t => t.status === 'active')
-    .map(task => ({
-      task,
-      iceScore: calculateICEScore(task.impact, task.confidence, task.ease),
-      timeProgress: task.estimatedTime > 0 ? (task.actualTime || 0) / task.estimatedTime : 0
-    }))
-    .filter(({ timeProgress }) => timeProgress < 0.5)
-    .sort((a, b) => b.iceScore - a.iceScore)
-    .slice(0, 3)
-    .map(({ task }) => ({
-      task,
-      reason: `High ICE score (${calculateICEScore(task.impact, task.confidence, task.ease).toFixed(1)}) with progress to make`,
-      suggestedTimeBlock: task.timeBlock,
-      priority: 'high' as const
-    }));
+  const tomorrowRecommendations: import("./types").TaskScheduleSuggestion[] =
+    tasks
+      .filter((t) => t.status === "active")
+      .map((task) => ({
+        task,
+        iceScore: calculateICEScore(task.impact, task.confidence, task.ease),
+        timeProgress:
+          task.estimatedTime > 0
+            ? (task.actualTime || 0) / task.estimatedTime
+            : 0,
+      }))
+      .filter(({ timeProgress }) => timeProgress < 0.5)
+      .sort((a, b) => b.iceScore - a.iceScore)
+      .slice(0, 3)
+      .map(({ task }) => ({
+        task,
+        reason: `High ICE score (${calculateICEScore(task.impact, task.confidence, task.ease).toFixed(1)}) with progress to make`,
+        suggestedTimeBlock: task.timeBlock,
+        priority: "high" as const,
+      }));
 
   // Wins (completed tasks descriptions)
-  const wins = completedToday.map(t => `✅ ${t.name}`);
+  const wins = completedToday.map((t) => `✅ ${t.name}`);
   if (wins.length === 0) {
-    wins.push('Focus on progress, not perfection. Every small step counts!');
+    wins.push("Focus on progress, not perfection. Every small step counts!");
   }
 
   return {
@@ -579,28 +674,31 @@ export function generateEndOfDayInsights(
     completionMomentum: {
       completed: completedToday.length,
       started: startedToday.length,
-      completionRate: startedToday.length > 0 ? completedToday.length / startedToday.length : 0,
-      topCompletions
+      completionRate:
+        startedToday.length > 0
+          ? completedToday.length / startedToday.length
+          : 0,
+      topCompletions,
     },
     timeDistribution: {
       planned: plannedByType,
       actual: actualByType,
-      variance
+      variance,
     },
     energyAlignment: {
       peakHours,
       deepWorkDuringPeak,
       deepWorkOffPeak,
       alignmentScore,
-      recommendation
+      recommendation,
     },
     focusQuality: {
       averageSessionMinutes,
       totalSessions,
       longestSession,
-      interruptionCount
+      interruptionCount,
     },
     tomorrowRecommendations,
-    wins
+    wins,
   };
 }

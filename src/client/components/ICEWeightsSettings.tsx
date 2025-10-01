@@ -1,7 +1,11 @@
-import { useState, useEffect } from 'react';
-import { X, Info } from 'lucide-react';
-import type { ICEWeights } from '../../utils/types';
-import { ICE_WEIGHT_PRESETS, DEFAULT_ICE_WEIGHTS, getPresetName } from '../lib/helpers';
+import { useState, useEffect } from "react";
+import { X, Info } from "lucide-react";
+import type { ICEWeights } from "../../utils/types";
+import {
+  ICE_WEIGHT_PRESETS,
+  DEFAULT_ICE_WEIGHTS,
+  getPresetName,
+} from "../lib/helpers";
 
 interface ICEWeightsSettingsProps {
   isOpen: boolean;
@@ -10,23 +14,28 @@ interface ICEWeightsSettingsProps {
   onSave: (weights: ICEWeights) => void;
 }
 
-export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: ICEWeightsSettingsProps) {
+export function ICEWeightsSettings({
+  isOpen,
+  currentWeights,
+  onClose,
+  onSave,
+}: ICEWeightsSettingsProps) {
   const [weights, setWeights] = useState<ICEWeights>(currentWeights);
-  const [selectedPreset, setSelectedPreset] = useState<string>('custom');
+  const [selectedPreset, setSelectedPreset] = useState<string>("custom");
 
   useEffect(() => {
     setWeights(currentWeights);
-    setSelectedPreset(getPresetName(currentWeights) || 'custom');
+    setSelectedPreset(getPresetName(currentWeights) || "custom");
   }, [currentWeights, isOpen]);
 
   const handleWeightChange = (field: keyof ICEWeights, value: number) => {
-    setWeights(prev => ({ ...prev, [field]: value }));
-    setSelectedPreset('custom');
+    setWeights((prev) => ({ ...prev, [field]: value }));
+    setSelectedPreset("custom");
   };
 
   const handlePresetChange = (presetName: string) => {
     setSelectedPreset(presetName);
-    if (presetName !== 'custom') {
+    if (presetName !== "custom") {
       setWeights(ICE_WEIGHT_PRESETS[presetName]);
     }
   };
@@ -35,7 +44,7 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
     // Validate total equals 100
     const total = weights.impact + weights.confidence + weights.ease;
     if (Math.abs(total - 100) > 0.1) {
-      alert('Total weights must equal 100%');
+      alert("Total weights must equal 100%");
       return;
     }
     onSave(weights);
@@ -44,7 +53,7 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
 
   const handleReset = () => {
     setWeights(DEFAULT_ICE_WEIGHTS);
-    setSelectedPreset('impactFocused');
+    setSelectedPreset("impactFocused");
   };
 
   const totalWeight = weights.impact + weights.confidence + weights.ease;
@@ -54,29 +63,34 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
 
   const presetInfo: Record<string, { name: string; description: string }> = {
     balanced: {
-      name: 'Balanced (33-33-33)',
-      description: 'Equal weight to all factors. Good for general use.'
+      name: "Balanced (33-33-33)",
+      description: "Equal weight to all factors. Good for general use.",
     },
     impactFocused: {
-      name: 'Impact-Focused (50-30-20)',
-      description: 'Prioritizes high-impact work. Best for strategic goals and revenue generation.'
+      name: "Impact-Focused (50-30-20)",
+      description:
+        "Prioritizes high-impact work. Best for strategic goals and revenue generation.",
     },
     quickWins: {
-      name: 'Quick Wins (25-25-50)',
-      description: 'Focuses on easy tasks. Great for building momentum and clearing backlogs.'
+      name: "Quick Wins (25-25-50)",
+      description:
+        "Focuses on easy tasks. Great for building momentum and clearing backlogs.",
     },
     confidentMoves: {
-      name: 'Confident Moves (30-50-20)',
-      description: 'Prioritizes tasks you can deliver with certainty. Good for meeting deadlines.'
+      name: "Confident Moves (30-50-20)",
+      description:
+        "Prioritizes tasks you can deliver with certainty. Good for meeting deadlines.",
     },
     strategic: {
-      name: 'Strategic (60-25-15)',
-      description: 'Maximum focus on impact. Best for founders and leaders making big bets.'
+      name: "Strategic (60-25-15)",
+      description:
+        "Maximum focus on impact. Best for founders and leaders making big bets.",
     },
     momentum: {
-      name: 'Momentum Builder (20-30-50)',
-      description: 'Gets things done fast. Perfect when energy is low or you need quick progress.'
-    }
+      name: "Momentum Builder (20-30-50)",
+      description:
+        "Gets things done fast. Perfect when energy is low or you need quick progress.",
+    },
   };
 
   return (
@@ -85,8 +99,12 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">ICE Score Weights</h2>
-            <p className="text-sm text-gray-600 mt-1">Customize how tasks are prioritized</p>
+            <h2 className="text-2xl font-bold text-gray-800">
+              ICE Score Weights
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Customize how tasks are prioritized
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -104,10 +122,12 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
             <div className="text-sm text-blue-800">
               <p className="font-medium mb-1">How ICE Weights Work</p>
               <p>
-                The weighted ICE score = (Impact × {weights.impact}%) + (Confidence × {weights.confidence}%) + (Ease × {weights.ease}%)
+                The weighted ICE score = (Impact × {weights.impact}%) +
+                (Confidence × {weights.confidence}%) + (Ease × {weights.ease}%)
               </p>
               <p className="mt-1">
-                Higher percentages mean that factor has more influence on task priority.
+                Higher percentages mean that factor has more influence on task
+                priority.
               </p>
             </div>
           </div>
@@ -124,31 +144,39 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
                   onClick={() => handlePresetChange(key)}
                   className={`text-left p-4 rounded-lg border-2 transition-all ${
                     selectedPreset === key
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-gray-300 bg-white"
                   }`}
                 >
-                  <div className="font-medium text-gray-800 mb-1">{info.name}</div>
-                  <div className="text-xs text-gray-600">{info.description}</div>
+                  <div className="font-medium text-gray-800 mb-1">
+                    {info.name}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {info.description}
+                  </div>
                 </button>
               ))}
               <button
-                onClick={() => setSelectedPreset('custom')}
+                onClick={() => setSelectedPreset("custom")}
                 className={`text-left p-4 rounded-lg border-2 transition-all ${
-                  selectedPreset === 'custom'
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                  selectedPreset === "custom"
+                    ? "border-purple-500 bg-purple-50"
+                    : "border-gray-200 hover:border-gray-300 bg-white"
                 }`}
               >
                 <div className="font-medium text-gray-800 mb-1">Custom</div>
-                <div className="text-xs text-gray-600">Set your own weight percentages</div>
+                <div className="text-xs text-gray-600">
+                  Set your own weight percentages
+                </div>
               </button>
             </div>
           </div>
 
           {/* Weight Sliders */}
           <div className="space-y-6 mb-6">
-            <h3 className="text-lg font-semibold text-gray-800">Fine-tune Weights</h3>
+            <h3 className="text-lg font-semibold text-gray-800">
+              Fine-tune Weights
+            </h3>
 
             {/* Impact */}
             <div>
@@ -156,7 +184,9 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
                 <label className="text-sm font-medium text-gray-700">
                   Impact Weight
                 </label>
-                <span className="text-lg font-bold text-blue-600">{weights.impact.toFixed(0)}%</span>
+                <span className="text-lg font-bold text-blue-600">
+                  {weights.impact.toFixed(0)}%
+                </span>
               </div>
               <input
                 type="range"
@@ -164,7 +194,9 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
                 max="100"
                 step="5"
                 value={weights.impact}
-                onChange={(e) => handleWeightChange('impact', parseFloat(e.target.value))}
+                onChange={(e) =>
+                  handleWeightChange("impact", parseFloat(e.target.value))
+                }
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -178,7 +210,9 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
                 <label className="text-sm font-medium text-gray-700">
                   Confidence Weight
                 </label>
-                <span className="text-lg font-bold text-green-600">{weights.confidence.toFixed(0)}%</span>
+                <span className="text-lg font-bold text-green-600">
+                  {weights.confidence.toFixed(0)}%
+                </span>
               </div>
               <input
                 type="range"
@@ -186,7 +220,9 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
                 max="100"
                 step="5"
                 value={weights.confidence}
-                onChange={(e) => handleWeightChange('confidence', parseFloat(e.target.value))}
+                onChange={(e) =>
+                  handleWeightChange("confidence", parseFloat(e.target.value))
+                }
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -200,7 +236,9 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
                 <label className="text-sm font-medium text-gray-700">
                   Ease Weight
                 </label>
-                <span className="text-lg font-bold text-orange-600">{weights.ease.toFixed(0)}%</span>
+                <span className="text-lg font-bold text-orange-600">
+                  {weights.ease.toFixed(0)}%
+                </span>
               </div>
               <input
                 type="range"
@@ -208,7 +246,9 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
                 max="100"
                 step="5"
                 value={weights.ease}
-                onChange={(e) => handleWeightChange('ease', parseFloat(e.target.value))}
+                onChange={(e) =>
+                  handleWeightChange("ease", parseFloat(e.target.value))
+                }
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -217,14 +257,20 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
             </div>
 
             {/* Total Display */}
-            <div className={`p-4 rounded-lg border-2 ${
-              isValid ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'
-            }`}>
+            <div
+              className={`p-4 rounded-lg border-2 ${
+                isValid
+                  ? "bg-green-50 border-green-300"
+                  : "bg-red-50 border-red-300"
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <span className="font-medium text-gray-700">Total Weight:</span>
-                <span className={`text-xl font-bold ${
-                  isValid ? 'text-green-700' : 'text-red-700'
-                }`}>
+                <span
+                  className={`text-xl font-bold ${
+                    isValid ? "text-green-700" : "text-red-700"
+                  }`}
+                >
                   {totalWeight.toFixed(1)}%
                 </span>
               </div>
@@ -238,14 +284,23 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
 
           {/* Example Calculation */}
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-            <h4 className="text-sm font-semibold text-gray-700 mb-2">Example Calculation</h4>
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">
+              Example Calculation
+            </h4>
             <p className="text-sm text-gray-600 mb-2">
               For a task with Impact=8, Confidence=6, Ease=4:
             </p>
             <div className="font-mono text-sm text-gray-700 bg-white p-3 rounded border">
-              Score = (8 × {weights.impact.toFixed(0)}%) + (6 × {weights.confidence.toFixed(0)}%) + (4 × {weights.ease.toFixed(0)}%)
+              Score = (8 × {weights.impact.toFixed(0)}%) + (6 ×{" "}
+              {weights.confidence.toFixed(0)}%) + (4 × {weights.ease.toFixed(0)}
+              %)
               <br />
-              Score = {((8 * weights.impact / 100) + (6 * weights.confidence / 100) + (4 * weights.ease / 100)).toFixed(1)}
+              Score ={" "}
+              {(
+                (8 * weights.impact) / 100 +
+                (6 * weights.confidence) / 100 +
+                (4 * weights.ease) / 100
+              ).toFixed(1)}
             </div>
           </div>
         </div>
@@ -270,8 +325,8 @@ export function ICEWeightsSettings({ isOpen, currentWeights, onClose, onSave }: 
               disabled={!isValid}
               className={`px-6 py-2 rounded-lg font-medium transition ${
                 isValid
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  ? "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }`}
             >
               Save & Apply

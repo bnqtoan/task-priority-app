@@ -1,9 +1,9 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import Settings from './pages/Settings';
-import FocusView from './pages/FocusView';
-import { Reports } from './pages/Reports';
-import { Notes } from './pages/Notes';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Dashboard from "./pages/Dashboard";
+import Settings from "./pages/Settings";
+import FocusView from "./pages/FocusView";
+import { Reports } from "./pages/Reports";
+import { Notes } from "./pages/Notes";
 
 function App() {
   return (

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import MDEditor from '@uiw/react-md-editor';
-import ReactMarkdown from 'react-markdown';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import MDEditor from "@uiw/react-md-editor";
+import ReactMarkdown from "react-markdown";
 import {
   BookOpen,
   Plus,
@@ -16,29 +16,34 @@ import {
   Users,
   Heart,
   X,
-  Save
-} from 'lucide-react';
-import type { Note, NoteCategory, CreateNoteInput, Task } from '../../utils/types';
-import { taskStorage } from '../../lib/storage';
+  Save,
+} from "lucide-react";
+import type {
+  Note,
+  NoteCategory,
+  CreateNoteInput,
+  Task,
+} from "../../utils/types";
+import { taskStorage } from "../../lib/storage";
 
 const CATEGORY_ICONS: Record<NoteCategory, any> = {
-  'daily-log': Calendar,
-  'task-note': FileText,
-  'reflection': Heart,
-  'idea': Lightbulb,
-  'meeting': Users
+  "daily-log": Calendar,
+  "task-note": FileText,
+  reflection: Heart,
+  idea: Lightbulb,
+  meeting: Users,
 };
 
 const CATEGORY_COLORS: Record<NoteCategory, string> = {
-  'daily-log': 'bg-blue-100 text-blue-700 border-blue-300',
-  'task-note': 'bg-green-100 text-green-700 border-green-300',
-  'reflection': 'bg-purple-100 text-purple-700 border-purple-300',
-  'idea': 'bg-yellow-100 text-yellow-700 border-yellow-300',
-  'meeting': 'bg-pink-100 text-pink-700 border-pink-300'
+  "daily-log": "bg-blue-100 text-blue-700 border-blue-300",
+  "task-note": "bg-green-100 text-green-700 border-green-300",
+  reflection: "bg-purple-100 text-purple-700 border-purple-300",
+  idea: "bg-yellow-100 text-yellow-700 border-yellow-300",
+  meeting: "bg-pink-100 text-pink-700 border-pink-300",
 };
 
 const NOTE_TEMPLATES: Record<NoteCategory, string> = {
-  'daily-log': `# Daily Log - ${new Date().toLocaleDateString()}
+  "daily-log": `# Daily Log - ${new Date().toLocaleDateString()}
 
 ## What I accomplished today
 -
@@ -51,7 +56,7 @@ const NOTE_TEMPLATES: Record<NoteCategory, string> = {
 
 ## Tomorrow's focus
 - `,
-  'task-note': `# Task Notes
+  "task-note": `# Task Notes
 
 ## Context
 <!-- Why are we doing this? -->
@@ -64,7 +69,7 @@ const NOTE_TEMPLATES: Record<NoteCategory, string> = {
 
 ## Next Steps
 - `,
-  'reflection': `# Reflection - ${new Date().toLocaleDateString()}
+  reflection: `# Reflection - ${new Date().toLocaleDateString()}
 
 ## What went well?
 -
@@ -77,7 +82,7 @@ const NOTE_TEMPLATES: Record<NoteCategory, string> = {
 
 ## Actions for next time
 - `,
-  'idea': `# Idea
+  idea: `# Idea
 
 ## The Concept
 <!-- Describe your idea -->
@@ -90,7 +95,7 @@ const NOTE_TEMPLATES: Record<NoteCategory, string> = {
 
 ## Questions to explore
 - `,
-  'meeting': `# Meeting Notes - ${new Date().toLocaleDateString()}
+  meeting: `# Meeting Notes - ${new Date().toLocaleDateString()}
 
 ## Attendees
 -
@@ -105,7 +110,7 @@ const NOTE_TEMPLATES: Record<NoteCategory, string> = {
 - [ ]
 
 ## Follow-up
-- `
+- `,
 };
 
 export function Notes() {
@@ -113,18 +118,20 @@ export function Notes() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<NoteCategory | 'all'>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<
+    NoteCategory | "all"
+  >("all");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Form state for creating/editing notes
   const [noteForm, setNoteForm] = useState<CreateNoteInput>({
-    title: '',
-    content: '',
-    category: 'task-note',
+    title: "",
+    content: "",
+    category: "task-note",
     tags: [],
-    taskId: null
+    taskId: null,
   });
 
   // Load notes and tasks
@@ -141,7 +148,7 @@ export function Notes() {
       const allTasks = await taskStorage.getTasks();
       setTasks(allTasks);
     } catch (error) {
-      console.error('Failed to load data:', error);
+      console.error("Failed to load data:", error);
     } finally {
       setLoading(false);
     }
@@ -149,7 +156,7 @@ export function Notes() {
 
   const handleCreateNote = async () => {
     if (!noteForm.title.trim() || !noteForm.content.trim()) {
-      alert('Please provide both title and content');
+      alert("Please provide both title and content");
       return;
     }
 
@@ -159,16 +166,16 @@ export function Notes() {
 
       // Reset form
       setNoteForm({
-        title: '',
-        content: '',
-        category: 'task-note',
+        title: "",
+        content: "",
+        category: "task-note",
         tags: [],
-        taskId: null
+        taskId: null,
       });
       setIsEditing(false);
     } catch (error) {
-      console.error('Failed to create note:', error);
-      alert('Failed to create note');
+      console.error("Failed to create note:", error);
+      alert("Failed to create note");
     }
   };
 
@@ -179,41 +186,41 @@ export function Notes() {
 
     try {
       const updated = await taskStorage.updateNote(selectedNote.id, noteForm);
-      setNotes(notes.map(n => n.id === updated.id ? updated : n));
+      setNotes(notes.map((n) => (n.id === updated.id ? updated : n)));
       setSelectedNote(updated);
       setIsEditing(false);
     } catch (error) {
-      console.error('Failed to update note:', error);
-      alert('Failed to update note');
+      console.error("Failed to update note:", error);
+      alert("Failed to update note");
     }
   };
 
   const handleDeleteNote = async (noteId: number) => {
-    if (!confirm('Are you sure you want to delete this note?')) {
+    if (!confirm("Are you sure you want to delete this note?")) {
       return;
     }
 
     try {
       await taskStorage.deleteNote(noteId);
-      setNotes(notes.filter(n => n.id !== noteId));
+      setNotes(notes.filter((n) => n.id !== noteId));
 
       if (selectedNote?.id === noteId) {
         setSelectedNote(null);
       }
     } catch (error) {
-      console.error('Failed to delete note:', error);
-      alert('Failed to delete note');
+      console.error("Failed to delete note:", error);
+      alert("Failed to delete note");
     }
   };
 
   const startNewNote = (category?: NoteCategory) => {
-    const cat = category || 'task-note';
+    const cat = category || "task-note";
     setNoteForm({
-      title: '',
+      title: "",
       content: NOTE_TEMPLATES[cat],
       category: cat,
       tags: [],
-      taskId: null
+      taskId: null,
     });
     setIsEditing(true);
     setSelectedNote(null);
@@ -226,7 +233,7 @@ export function Notes() {
       content: note.content,
       category: note.category,
       tags: note.tags || [],
-      taskId: note.taskId || null
+      taskId: note.taskId || null,
     });
     setIsEditing(true);
   };
@@ -235,24 +242,26 @@ export function Notes() {
     setIsEditing(false);
     setSelectedNote(null);
     setNoteForm({
-      title: '',
-      content: '',
-      category: 'task-note',
+      title: "",
+      content: "",
+      category: "task-note",
       tags: [],
-      taskId: null
+      taskId: null,
     });
   };
 
   // Filter notes
-  const filteredNotes = notes.filter(note => {
-    if (selectedCategory !== 'all' && note.category !== selectedCategory) return false;
-    if (selectedTag && (!note.tags || !note.tags.includes(selectedTag))) return false;
+  const filteredNotes = notes.filter((note) => {
+    if (selectedCategory !== "all" && note.category !== selectedCategory)
+      return false;
+    if (selectedTag && (!note.tags || !note.tags.includes(selectedTag)))
+      return false;
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
         note.title.toLowerCase().includes(query) ||
         note.content.toLowerCase().includes(query) ||
-        (note.tags && note.tags.some(t => t.toLowerCase().includes(query)))
+        (note.tags && note.tags.some((t) => t.toLowerCase().includes(query)))
       );
     }
     return true;
@@ -260,7 +269,7 @@ export function Notes() {
 
   // Get all unique tags
   const allTags = Array.from(
-    new Set(notes.flatMap(n => n.tags || []))
+    new Set(notes.flatMap((n) => n.tags || [])),
   ).sort();
 
   if (loading) {
@@ -281,7 +290,9 @@ export function Notes() {
               <BookOpen className="text-indigo-600" size={32} />
               Notes
             </h1>
-            <p className="text-gray-600">Your markdown-powered knowledge base</p>
+            <p className="text-gray-600">
+              Your markdown-powered knowledge base
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -304,7 +315,7 @@ export function Notes() {
         {/* Quick Templates */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-gray-600 mr-2">Quick start:</span>
-          {(Object.keys(NOTE_TEMPLATES) as NoteCategory[]).map(category => {
+          {(Object.keys(NOTE_TEMPLATES) as NoteCategory[]).map((category) => {
             const Icon = CATEGORY_ICONS[category];
             return (
               <button
@@ -313,7 +324,7 @@ export function Notes() {
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:shadow-sm ${CATEGORY_COLORS[category]}`}
               >
                 <Icon size={14} />
-                <span className="capitalize">{category.replace('-', ' ')}</span>
+                <span className="capitalize">{category.replace("-", " ")}</span>
               </button>
             );
           })}
@@ -325,7 +336,10 @@ export function Notes() {
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <Search
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={18}
+              />
               <input
                 type="text"
                 value={searchQuery}
@@ -340,12 +354,16 @@ export function Notes() {
             <span className="text-sm text-gray-600">Category:</span>
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value as NoteCategory | 'all')}
+              onChange={(e) =>
+                setSelectedCategory(e.target.value as NoteCategory | "all")
+              }
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
             >
               <option value="all">All</option>
-              {(Object.keys(NOTE_TEMPLATES) as NoteCategory[]).map(cat => (
-                <option key={cat} value={cat}>{cat.replace('-', ' ')}</option>
+              {(Object.keys(NOTE_TEMPLATES) as NoteCategory[]).map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat.replace("-", " ")}
+                </option>
               ))}
             </select>
           </div>
@@ -353,14 +371,16 @@ export function Notes() {
           {allTags.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
               <Tag className="text-gray-400" size={16} />
-              {allTags.slice(0, 5).map(tag => (
+              {allTags.slice(0, 5).map((tag) => (
                 <button
                   key={tag}
-                  onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+                  onClick={() =>
+                    setSelectedTag(selectedTag === tag ? null : tag)
+                  }
                   className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
                     selectedTag === tag
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? "bg-indigo-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   #{tag}
@@ -376,7 +396,8 @@ export function Notes() {
         {/* Notes List */}
         <div className="lg:col-span-1 space-y-3">
           <div className="text-sm text-gray-600 mb-2">
-            {filteredNotes.length} {filteredNotes.length === 1 ? 'note' : 'notes'}
+            {filteredNotes.length}{" "}
+            {filteredNotes.length === 1 ? "note" : "notes"}
           </div>
 
           {filteredNotes.length === 0 ? (
@@ -391,7 +412,7 @@ export function Notes() {
               </button>
             </div>
           ) : (
-            filteredNotes.map(note => {
+            filteredNotes.map((note) => {
               const Icon = CATEGORY_ICONS[note.category];
               const isSelected = selectedNote?.id === note.id;
 
@@ -403,13 +424,17 @@ export function Notes() {
                     setIsEditing(false);
                   }}
                   className={`bg-white rounded-lg border-2 p-4 cursor-pointer transition-all hover:shadow-md ${
-                    isSelected ? 'border-indigo-500 shadow-md' : 'border-gray-200'
+                    isSelected
+                      ? "border-indigo-500 shadow-md"
+                      : "border-gray-200"
                   }`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2 flex-1">
                       <Icon size={16} className="text-gray-500 flex-shrink-0" />
-                      <h3 className="font-semibold text-gray-900 line-clamp-1">{note.title}</h3>
+                      <h3 className="font-semibold text-gray-900 line-clamp-1">
+                        {note.title}
+                      </h3>
                     </div>
                     <div className="flex items-center gap-1">
                       <button
@@ -434,11 +459,15 @@ export function Notes() {
                   </div>
 
                   <div className="text-xs text-gray-500 mb-2 line-clamp-2 prose prose-xs max-w-none">
-                    <ReactMarkdown>{note.content.substring(0, 150)}</ReactMarkdown>
+                    <ReactMarkdown>
+                      {note.content.substring(0, 150)}
+                    </ReactMarkdown>
                   </div>
 
                   <div className="flex items-center justify-between text-xs">
-                    <span className={`px-2 py-0.5 rounded font-medium ${CATEGORY_COLORS[note.category]}`}>
+                    <span
+                      className={`px-2 py-0.5 rounded font-medium ${CATEGORY_COLORS[note.category]}`}
+                    >
                       {note.category}
                     </span>
                     <span className="text-gray-400">
@@ -448,8 +477,10 @@ export function Notes() {
 
                   {note.tags && note.tags.length > 0 && (
                     <div className="flex items-center gap-1 mt-2 flex-wrap">
-                      {note.tags.map(tag => (
-                        <span key={tag} className="text-xs text-gray-500">#{tag}</span>
+                      {note.tags.map((tag) => (
+                        <span key={tag} className="text-xs text-gray-500">
+                          #{tag}
+                        </span>
                       ))}
                     </div>
                   )}
@@ -465,7 +496,7 @@ export function Notes() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">
-                  {selectedNote ? 'Edit Note' : 'New Note'}
+                  {selectedNote ? "Edit Note" : "New Note"}
                 </h2>
                 <div className="flex items-center gap-2">
                   <button
@@ -487,11 +518,15 @@ export function Notes() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Title
+                  </label>
                   <input
                     type="text"
                     value={noteForm.title}
-                    onChange={(e) => setNoteForm({ ...noteForm, title: e.target.value })}
+                    onChange={(e) =>
+                      setNoteForm({ ...noteForm, title: e.target.value })
+                    }
                     placeholder="Note title..."
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
@@ -499,39 +534,67 @@ export function Notes() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Category
+                    </label>
                     <select
                       value={noteForm.category}
-                      onChange={(e) => setNoteForm({ ...noteForm, category: e.target.value as NoteCategory })}
+                      onChange={(e) =>
+                        setNoteForm({
+                          ...noteForm,
+                          category: e.target.value as NoteCategory,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     >
-                      {(Object.keys(NOTE_TEMPLATES) as NoteCategory[]).map(cat => (
-                        <option key={cat} value={cat}>{cat.replace('-', ' ')}</option>
-                      ))}
+                      {(Object.keys(NOTE_TEMPLATES) as NoteCategory[]).map(
+                        (cat) => (
+                          <option key={cat} value={cat}>
+                            {cat.replace("-", " ")}
+                          </option>
+                        ),
+                      )}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Link to Task (optional)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Link to Task (optional)
+                    </label>
                     <select
-                      value={noteForm.taskId || ''}
-                      onChange={(e) => setNoteForm({ ...noteForm, taskId: e.target.value ? Number(e.target.value) : null })}
+                      value={noteForm.taskId || ""}
+                      onChange={(e) =>
+                        setNoteForm({
+                          ...noteForm,
+                          taskId: e.target.value
+                            ? Number(e.target.value)
+                            : null,
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">None</option>
-                      {tasks.filter(t => t.status === 'active').map(task => (
-                        <option key={task.id} value={task.id}>{task.name}</option>
-                      ))}
+                      {tasks
+                        .filter((t) => t.status === "active")
+                        .map((task) => (
+                          <option key={task.id} value={task.id}>
+                            {task.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Content (Markdown)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Content (Markdown)
+                  </label>
                   <div data-color-mode="light">
                     <MDEditor
                       value={noteForm.content}
-                      onChange={(val) => setNoteForm({ ...noteForm, content: val || '' })}
+                      onChange={(val) =>
+                        setNoteForm({ ...noteForm, content: val || "" })
+                      }
                       height={400}
                       preview="edit"
                     />
@@ -543,14 +606,24 @@ export function Notes() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedNote.title}</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    {selectedNote.title}
+                  </h2>
                   <div className="flex items-center gap-3 text-sm text-gray-500">
-                    <span className={`px-2 py-1 rounded font-medium text-xs ${CATEGORY_COLORS[selectedNote.category]}`}>
+                    <span
+                      className={`px-2 py-1 rounded font-medium text-xs ${CATEGORY_COLORS[selectedNote.category]}`}
+                    >
                       {selectedNote.category}
                     </span>
-                    <span>Created {new Date(selectedNote.createdAt).toLocaleDateString()}</span>
+                    <span>
+                      Created{" "}
+                      {new Date(selectedNote.createdAt).toLocaleDateString()}
+                    </span>
                     {selectedNote.updatedAt !== selectedNote.createdAt && (
-                      <span>• Updated {new Date(selectedNote.updatedAt).toLocaleDateString()}</span>
+                      <span>
+                        • Updated{" "}
+                        {new Date(selectedNote.updatedAt).toLocaleDateString()}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -570,7 +643,9 @@ export function Notes() {
           ) : (
             <div className="bg-gray-50 rounded-lg p-12 text-center border-2 border-dashed border-gray-300">
               <BookOpen className="mx-auto text-gray-400 mb-4" size={64} />
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">Select a note or create a new one</h3>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                Select a note or create a new one
+              </h3>
               <p className="text-gray-500 mb-6">Your notes will appear here</p>
               <button
                 onClick={() => startNewNote()}

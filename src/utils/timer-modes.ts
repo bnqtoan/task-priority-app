@@ -12,9 +12,9 @@ export function formatCountdown(secondsRemaining: number): string {
   const secs = absSeconds % 60;
 
   if (hrs > 0) {
-    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   }
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 /**
@@ -26,9 +26,9 @@ export function formatElapsed(seconds: number): string {
   const secs = seconds % 60;
 
   if (hrs > 0) {
-    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   }
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 /**
@@ -41,10 +41,11 @@ export function formatElapsed(seconds: number): string {
 export function calculateRemaining(
   startTime: Date,
   targetMinutes: number,
-  pausedSeconds: number
+  pausedSeconds: number,
 ): number {
   const now = new Date();
-  const elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000) - pausedSeconds;
+  const elapsedSeconds =
+    Math.floor((now.getTime() - startTime.getTime()) / 1000) - pausedSeconds;
   const targetSeconds = targetMinutes * 60;
   return targetSeconds - elapsedSeconds;
 }
@@ -57,10 +58,12 @@ export function calculateRemaining(
  */
 export function calculateElapsed(
   startTime: Date,
-  pausedSeconds: number
+  pausedSeconds: number,
 ): number {
   const now = new Date();
-  return Math.floor((now.getTime() - startTime.getTime()) / 1000) - pausedSeconds;
+  return (
+    Math.floor((now.getTime() - startTime.getTime()) / 1000) - pausedSeconds
+  );
 }
 
 /**
@@ -92,8 +95,8 @@ export function parseDurationToMinutes(input: string): number | null {
   const trimmed = input.trim();
 
   // Check for HH:MM or MM:SS format
-  if (trimmed.includes(':')) {
-    const parts = trimmed.split(':');
+  if (trimmed.includes(":")) {
+    const parts = trimmed.split(":");
     if (parts.length === 2) {
       const first = parseInt(parts[0], 10);
       const second = parseInt(parts[1], 10);

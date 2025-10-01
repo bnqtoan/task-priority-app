@@ -15,14 +15,14 @@ The demo branch provides a **public demonstration** of the Task Priority Framewo
 
 ### ❌ **Demo Limitations**
 
-| Feature | Production | Demo |
-|---------|------------|------|
-| **Authentication** | Cloudflare Zero Trust | None (bypassed) |
-| **Data Storage** | Cloudflare D1 Database | Browser localStorage |
-| **Data Persistence** | Permanent, cross-device | Local browser only |
-| **User Management** | Multi-user with isolation | Single demo user |
-| **Data Sync** | Real-time across devices | Local only |
-| **Backup/Export** | Database backups | Manual JSON export |
+| Feature              | Production                | Demo                 |
+| -------------------- | ------------------------- | -------------------- |
+| **Authentication**   | Cloudflare Zero Trust     | None (bypassed)      |
+| **Data Storage**     | Cloudflare D1 Database    | Browser localStorage |
+| **Data Persistence** | Permanent, cross-device   | Local browser only   |
+| **User Management**  | Multi-user with isolation | Single demo user     |
+| **Data Sync**        | Real-time across devices  | Local only           |
+| **Backup/Export**    | Database backups          | Manual JSON export   |
 
 ### ✅ **Demo Capabilities**
 
@@ -44,15 +44,16 @@ Use environment variables and feature flags to control demo vs production behavi
 ```typescript
 // src/utils/config.ts
 export const APP_CONFIG = {
-  IS_DEMO: process.env.VITE_DEMO_MODE === 'true',
-  STORAGE_TYPE: process.env.VITE_DEMO_MODE === 'true' ? 'localStorage' : 'database',
-  AUTH_ENABLED: process.env.VITE_DEMO_MODE !== 'true',
+  IS_DEMO: process.env.VITE_DEMO_MODE === "true",
+  STORAGE_TYPE:
+    process.env.VITE_DEMO_MODE === "true" ? "localStorage" : "database",
+  AUTH_ENABLED: process.env.VITE_DEMO_MODE !== "true",
   DEMO_USER: {
     id: 1,
-    email: 'demo@taskpriority.app',
-    name: 'Demo User'
-  }
-}
+    email: "demo@taskpriority.app",
+    name: "Demo User",
+  },
+};
 ```
 
 ### 2. **Abstract Storage Layer**
@@ -62,10 +63,10 @@ Create a storage abstraction that can switch between localStorage and API calls:
 ```typescript
 // src/lib/storage.ts
 interface TaskStorage {
-  getTasks(): Promise<Task[]>
-  createTask(task: CreateTaskInput): Promise<Task>
-  updateTask(id: number, task: Partial<Task>): Promise<Task>
-  deleteTask(id: number): Promise<void>
+  getTasks(): Promise<Task[]>;
+  createTask(task: CreateTaskInput): Promise<Task>;
+  updateTask(id: number, task: Partial<Task>): Promise<Task>;
+  deleteTask(id: number): Promise<void>;
 }
 
 class LocalStorageTaskStorage implements TaskStorage {
@@ -76,9 +77,9 @@ class ApiTaskStorage implements TaskStorage {
   // API implementation
 }
 
-export const taskStorage: TaskStorage = APP_CONFIG.IS_DEMO 
+export const taskStorage: TaskStorage = APP_CONFIG.IS_DEMO
   ? new LocalStorageTaskStorage()
-  : new ApiTaskStorage()
+  : new ApiTaskStorage();
 ```
 
 ### 3. **Demo-Specific Components**
@@ -87,7 +88,7 @@ export const taskStorage: TaskStorage = APP_CONFIG.IS_DEMO
 // src/components/DemoNotice.tsx
 export const DemoNotice = () => {
   if (!APP_CONFIG.IS_DEMO) return null
-  
+
   return (
     <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-4">
       <div className="flex">
@@ -162,7 +163,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          
+
       - name: Sync demo branch
         run: |
           git checkout demo
@@ -198,13 +199,13 @@ Keep business logic identical between versions:
 // ✅ Good: Shared algorithms and calculations
 export const calculateICE = (task: Task): string => {
   // Same logic for both demo and production
-  return ((task.impact * task.confidence * task.ease) / 100).toFixed(2)
-}
+  return ((task.impact * task.confidence * task.ease) / 100).toFixed(2);
+};
 
 // ✅ Good: Shared UI components
 export const TaskCard = ({ task, onUpdate }: TaskCardProps) => {
   // Same UI for both versions
-}
+};
 ```
 
 ### 3. **Demo Data Management**
@@ -221,17 +222,17 @@ export const DEMO_SEED_DATA = {
       confidence: 8,
       ease: 6,
       decision: "DO",
-      timeBlock: "Deep Work"
+      timeBlock: "Deep Work",
     },
     // ... more sample tasks
-  ]
-}
+  ],
+};
 
 export const initializeDemoData = () => {
-  if (!localStorage.getItem('demo-tasks')) {
-    localStorage.setItem('demo-tasks', JSON.stringify(DEMO_SEED_DATA.tasks))
+  if (!localStorage.getItem("demo-tasks")) {
+    localStorage.setItem("demo-tasks", JSON.stringify(DEMO_SEED_DATA.tasks));
   }
-}
+};
 ```
 
 ### 4. **Environment-Specific Builds**
@@ -240,10 +241,10 @@ export const initializeDemoData = () => {
 // vite.config.ts
 export default defineConfig(({ mode }) => ({
   define: {
-    'process.env.VITE_DEMO_MODE': JSON.stringify(mode === 'demo'),
+    "process.env.VITE_DEMO_MODE": JSON.stringify(mode === "demo"),
   },
   // ... other config
-}))
+}));
 ```
 
 ```json
@@ -278,7 +279,7 @@ route = "demo.taskpriority.com"
 npm run build:prod
 wrangler deploy
 
-# Demo deployment  
+# Demo deployment
 npm run build:demo
 wrangler deploy --config wrangler.demo.toml
 ```
@@ -289,24 +290,24 @@ wrangler deploy --config wrangler.demo.toml
 
 ```typescript
 // tests/demo.test.ts
-describe('Demo Mode', () => {
+describe("Demo Mode", () => {
   beforeEach(() => {
-    process.env.VITE_DEMO_MODE = 'true'
-    localStorage.clear()
-  })
+    process.env.VITE_DEMO_MODE = "true";
+    localStorage.clear();
+  });
 
-  it('should use localStorage for task storage', () => {
+  it("should use localStorage for task storage", () => {
     // Test localStorage functionality
-  })
+  });
 
-  it('should bypass authentication', () => {
+  it("should bypass authentication", () => {
     // Test auth bypass
-  })
+  });
 
-  it('should show demo notice', () => {
+  it("should show demo notice", () => {
     // Test demo UI components
-  })
-})
+  });
+});
 ```
 
 ### **Manual Testing Checklist**
@@ -327,11 +328,11 @@ describe('Demo Mode', () => {
 ```typescript
 // Track demo usage without personal data
 if (APP_CONFIG.IS_DEMO) {
-  analytics.track('demo_session_started', {
+  analytics.track("demo_session_started", {
     timestamp: Date.now(),
     user_agent: navigator.userAgent,
-    screen_resolution: `${screen.width}x${screen.height}`
-  })
+    screen_resolution: `${screen.width}x${screen.height}`,
+  });
 }
 ```
 
@@ -350,19 +351,19 @@ For users wanting to migrate from demo to production:
 ```typescript
 // src/utils/migration.ts
 export const exportDemoData = () => {
-  const tasks = localStorage.getItem('demo-tasks')
-  const preferences = localStorage.getItem('demo-preferences')
-  
+  const tasks = localStorage.getItem("demo-tasks");
+  const preferences = localStorage.getItem("demo-preferences");
+
   return {
     tasks: tasks ? JSON.parse(tasks) : [],
     preferences: preferences ? JSON.parse(preferences) : {},
-    exportDate: new Date().toISOString()
-  }
-}
+    exportDate: new Date().toISOString(),
+  };
+};
 
 export const importToProduction = async (demoData: DemoExport) => {
   // API calls to import data to production account
-}
+};
 ```
 
 ## Troubleshooting
@@ -378,12 +379,12 @@ export const importToProduction = async (demoData: DemoExport) => {
 
 ```typescript
 // Debug helper for demo mode
-if (APP_CONFIG.IS_DEMO && window.location.search.includes('debug=true')) {
+if (APP_CONFIG.IS_DEMO && window.location.search.includes("debug=true")) {
   window.demoDebug = {
     clearData: () => localStorage.clear(),
     exportData: exportDemoData,
-    seedData: () => initializeDemoData()
-  }
+    seedData: () => initializeDemoData(),
+  };
 }
 ```
 
@@ -400,6 +401,7 @@ if (APP_CONFIG.IS_DEMO && window.location.search.includes('debug=true')) {
 ### **Scaling Strategy**
 
 As the app grows, consider:
+
 - Feature flags management system (LaunchDarkly, etc.)
 - Automated testing pipelines for both versions
 - A/B testing between demo and production features

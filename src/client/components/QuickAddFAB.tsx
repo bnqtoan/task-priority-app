@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import { Plus, ChevronUp, X } from 'lucide-react';
-import type { CreateTaskInput } from '../../utils/types';
+import { useState, useEffect, useRef } from "react";
+import { Plus, ChevronUp, X } from "lucide-react";
+import type { CreateTaskInput } from "../../utils/types";
 
 interface QuickAddFABProps {
   onAdd: (task: CreateTaskInput) => Promise<void>;
@@ -9,42 +9,42 @@ interface QuickAddFABProps {
 
 export function QuickAddFAB({ onAdd, onShowFullForm }: QuickAddFABProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [taskName, setTaskName] = useState('');
+  const [taskName, setTaskName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Smart defaults for quick add
-  const getQuickTaskDefaults = (): Omit<CreateTaskInput, 'name'> => ({
+  const getQuickTaskDefaults = (): Omit<CreateTaskInput, "name"> => ({
     impact: 5,
     confidence: 5,
     ease: 5,
-    type: 'operations',
-    timeBlock: 'quick',
+    type: "operations",
+    timeBlock: "quick",
     estimatedTime: 30,
-    decision: 'do',
-    scheduledFor: 'today',
+    decision: "do",
+    scheduledFor: "today",
     recurringPattern: null,
-    notes: ''
+    notes: "",
   });
 
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Cmd+K (Mac) or Ctrl+K (Windows/Linux)
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setIsOpen(true);
       }
 
       // Escape to close
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === "Escape" && isOpen) {
         setIsOpen(false);
-        setTaskName('');
+        setTaskName("");
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
   // Auto-focus input when opened
@@ -63,16 +63,16 @@ export function QuickAddFAB({ onAdd, onShowFullForm }: QuickAddFABProps) {
     try {
       const newTask: CreateTaskInput = {
         name: taskName.trim(),
-        ...getQuickTaskDefaults()
+        ...getQuickTaskDefaults(),
       };
 
       await onAdd(newTask);
 
       // Reset and close
-      setTaskName('');
+      setTaskName("");
       setIsOpen(false);
     } catch (error) {
-      console.error('Failed to add task:', error);
+      console.error("Failed to add task:", error);
     } finally {
       setIsAdding(false);
     }
@@ -80,7 +80,7 @@ export function QuickAddFAB({ onAdd, onShowFullForm }: QuickAddFABProps) {
 
   const handleAdvanced = () => {
     setIsOpen(false);
-    setTaskName('');
+    setTaskName("");
     if (onShowFullForm) {
       onShowFullForm();
     }
@@ -92,20 +92,22 @@ export function QuickAddFAB({ onAdd, onShowFullForm }: QuickAddFABProps) {
       {isOpen && (
         <div
           className="fixed bottom-24 right-6 bg-white rounded-lg shadow-2xl border border-gray-200 z-40 animate-slide-up"
-          style={{ minWidth: '350px', maxWidth: '400px' }}
+          style={{ minWidth: "350px", maxWidth: "400px" }}
         >
           <form onSubmit={handleSubmit}>
             {/* Header */}
             <div className="px-4 py-3 border-b bg-gradient-to-r from-purple-50 to-blue-50 rounded-t-lg flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Plus size={18} className="text-purple-600" />
-                <span className="font-semibold text-gray-800">Quick Add Task</span>
+                <span className="font-semibold text-gray-800">
+                  Quick Add Task
+                </span>
               </div>
               <button
                 type="button"
                 onClick={() => {
                   setIsOpen(false);
-                  setTaskName('');
+                  setTaskName("");
                 }}
                 className="text-gray-400 hover:text-gray-600 p-1 hover:bg-white rounded transition"
               >
@@ -144,7 +146,7 @@ export function QuickAddFAB({ onAdd, onShowFullForm }: QuickAddFABProps) {
                 disabled={!taskName.trim() || isAdding}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition"
               >
-                {isAdding ? 'Adding...' : 'Add Task'}
+                {isAdding ? "Adding..." : "Add Task"}
               </button>
             </div>
           </form>
@@ -152,8 +154,15 @@ export function QuickAddFAB({ onAdd, onShowFullForm }: QuickAddFABProps) {
           {/* Keyboard hint */}
           <div className="px-4 py-2 bg-gray-50 border-t text-center">
             <span className="text-xs text-gray-400">
-              Press <kbd className="px-2 py-0.5 bg-white border rounded text-gray-600 font-mono">Enter</kbd> to add •{' '}
-              <kbd className="px-2 py-0.5 bg-white border rounded text-gray-600 font-mono">Esc</kbd> to close
+              Press{" "}
+              <kbd className="px-2 py-0.5 bg-white border rounded text-gray-600 font-mono">
+                Enter
+              </kbd>{" "}
+              to add •{" "}
+              <kbd className="px-2 py-0.5 bg-white border rounded text-gray-600 font-mono">
+                Esc
+              </kbd>{" "}
+              to close
             </span>
           </div>
         </div>
@@ -163,7 +172,7 @@ export function QuickAddFAB({ onAdd, onShowFullForm }: QuickAddFABProps) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-full shadow-2xl flex items-center justify-center z-50 transition-all duration-300 hover:scale-110 ${
-          isOpen ? 'rotate-45' : ''
+          isOpen ? "rotate-45" : ""
         }`}
         title="Quick Add Task (Cmd+K)"
       >

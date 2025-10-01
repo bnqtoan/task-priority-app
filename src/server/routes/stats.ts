@@ -1,12 +1,16 @@
-import { Hono } from 'hono';
-import { eq } from 'drizzle-orm';
-import { zValidator } from '@hono/zod-validator';
-import { createDB, type Env } from '../lib/db';
-import { accessMiddleware, type AccessUser } from '../middleware/access';
-import { tasks } from '../../db/schema';
-import { recommendationQuerySchema } from '../../utils/validation';
-import { getDecisionRecommendation } from '../../utils/algorithms';
-import type { OverviewStats, TaskRecommendations, Task } from '../../utils/types';
+import { Hono } from "hono";
+import { eq } from "drizzle-orm";
+import { zValidator } from "@hono/zod-validator";
+import { createDB, type Env } from "../lib/db";
+import { accessMiddleware, type AccessUser } from "../middleware/access";
+import { tasks } from "../../db/schema";
+import { recommendationQuerySchema } from "../../utils/validation";
+import { getDecisionRecommendation } from "../../utils/algorithms";
+import type {
+  OverviewStats,
+  TaskRecommendations,
+  Task,
+} from "../../utils/types";
 
 type Variables = {
   user: AccessUser;
@@ -15,12 +19,12 @@ type Variables = {
 const statsRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // Apply middleware to all stats routes
-statsRouter.use('*', accessMiddleware);
+statsRouter.use("*", accessMiddleware);
 
 // GET /api/stats/overview - Get overview stats
-statsRouter.get('/overview', async (c) => {
+statsRouter.get("/overview", async (c) => {
   // For demo mode, return empty stats since data is in localStorage
-  if (c.env.NODE_ENV === 'demo') {
+  if (c.env.NODE_ENV === "demo") {
     const emptyStats: OverviewStats = {
       decisions: {
         do: { count: 0, time: 0 },
@@ -47,15 +51,17 @@ statsRouter.get('/overview', async (c) => {
     return c.json(emptyStats);
   }
 
-  const user = c.get('user');
+  const user = c.get("user");
   const db = createDB(c.env);
 
   if (!db) {
-    return c.json({ error: 'Database not available' }, 500);
+    return c.json({ error: "Database not available" }, 500);
   }
 
   try {
-    const userTasks = await db.select().from(tasks)
+    const userTasks = await db
+      .select()
+      .from(tasks)
       .where(eq(tasks.userId, user.id))
       .all();
 
@@ -86,7 +92,7 @@ statsRouter.get('/overview', async (c) => {
 
     let totalTime = 0;
 
-    userTasks.forEach(task => {
+    userTasks.forEach((task) => {
       const time = task.estimatedTime || 0;
       totalTime += time;
 
@@ -119,46 +125,55 @@ statsRouter.get('/overview', async (c) => {
 
     return c.json(stats);
   } catch (error) {
-    console.error('Get overview stats error:', error);
-    return c.json({ error: 'Failed to fetch overview stats' }, 500);
+    console.error("Get overview stats error:", error);
+    return c.json({ error: "Failed to fetch overview stats" }, 500);
   }
 });
 
 // GET /api/stats/recommendations - Get AI recommendations for all tasks
-statsRouter.get('/recommendations', zValidator('query', recommendationQuerySchema), async (c) => {
-  // For demo mode, return empty recommendations since data is in localStorage
-  if (c.env.NODE_ENV === 'demo') {
-    const emptyRecommendations: TaskRecommendations = {};
-    return c.json(emptyRecommendations);
-  }
+statsRouter.get(
+  "/recommendations",
+  zValidator("query", recommendationQuerySchema),
+  async (c) => {
+    // For demo mode, return empty recommendations since data is in localStorage
+    if (c.env.NODE_ENV === "demo") {
+      const emptyRecommendations: TaskRecommendations = {};
+      return c.json(emptyRecommendations);
+    }
 
-  const { method } = c.req.valid('query');
-  const user = c.get('user');
-  const db = createDB(c.env);
+    const { method } = c.req.valid("query");
+    const user = c.get("user");
+    const db = createDB(c.env);
 
-  if (!db) {
-    return c.json({ error: 'Database not available' }, 500);
-  }
+    if (!db) {
+      return c.json({ error: "Database not available" }, 500);
+    }
 
-  try {
-    const userTasks = await db.select().from(tasks)
-      .where(eq(tasks.userId, user.id))
-      .all();
+    try {
+      const userTasks = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.userId, user.id))
+        .all();
 
-    const recommendations: TaskRecommendations = {};
+      const recommendations: TaskRecommendations = {};
 
-    userTasks.forEach(task => {
-      // Type assertion for database task to match algorithm interface
-      const taskForAlgorithm = task as Task;
-      const recommendation = getDecisionRecommendation(taskForAlgorithm, method);
-      recommendations[task.id] = recommendation;
-    });
+      userTasks.forEach((task) => {
+        // Type assertion for database task to match algorithm interface
+        const taskForAlgorithm = task as Task;
+        const recommendation = getDecisionRecommendation(
+          taskForAlgorithm,
+          method,
+        );
+        recommendations[task.id] = recommendation;
+      });
 
-    return c.json(recommendations);
-  } catch (error) {
-    console.error('Get recommendations error:', error);
-    return c.json({ error: 'Failed to generate recommendations' }, 500);
-  }
-});
+      return c.json(recommendations);
+    } catch (error) {
+      console.error("Get recommendations error:", error);
+      return c.json({ error: "Failed to generate recommendations" }, 500);
+    }
+  },
+);
 
 export default statsRouter;

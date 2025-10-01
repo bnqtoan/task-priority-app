@@ -1,7 +1,10 @@
-import { useState } from 'react';
-import { X, Clock, Zap } from 'lucide-react';
-import type { Task } from '../../utils/types';
-import { parseDurationToMinutes, formatMinutesToDuration } from '../../utils/timer-modes';
+import { useState } from "react";
+import { X, Clock, Zap } from "lucide-react";
+import type { Task } from "../../utils/types";
+import {
+  parseDurationToMinutes,
+  formatMinutesToDuration,
+} from "../../utils/timer-modes";
 
 interface DurationSelectorModalProps {
   task: Task;
@@ -12,8 +15,13 @@ interface DurationSelectorModalProps {
 
 const QUICK_DURATIONS = [15, 25, 30, 45, 60];
 
-export function DurationSelectorModal({ task, isOpen, onClose, onSelect }: DurationSelectorModalProps) {
-  const [customDuration, setCustomDuration] = useState('');
+export function DurationSelectorModal({
+  task,
+  isOpen,
+  onClose,
+  onSelect,
+}: DurationSelectorModalProps) {
+  const [customDuration, setCustomDuration] = useState("");
   const [selectedDuration, setSelectedDuration] = useState<number | null>(null);
 
   if (!isOpen) return null;
@@ -43,7 +51,10 @@ export function DurationSelectorModal({ task, isOpen, onClose, onSelect }: Durat
   const suggestedDuration = task.estimatedTime || null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      onClick={onClose}
+    >
       <div
         className="bg-white rounded-lg shadow-xl max-w-md w-full m-4 p-6"
         onClick={(e) => e.stopPropagation()}
@@ -71,7 +82,8 @@ export function DurationSelectorModal({ task, isOpen, onClose, onSelect }: Durat
             <div className="flex items-center gap-2 text-sm">
               <Zap className="text-blue-600" size={16} />
               <span className="text-gray-700">
-                Estimated: <strong>{formatMinutesToDuration(suggestedDuration)}</strong>
+                Estimated:{" "}
+                <strong>{formatMinutesToDuration(suggestedDuration)}</strong>
               </span>
               <button
                 onClick={() => handleQuickSelect(suggestedDuration)}
@@ -95,8 +107,8 @@ export function DurationSelectorModal({ task, isOpen, onClose, onSelect }: Durat
                 onClick={() => handleQuickSelect(minutes)}
                 className={`px-3 py-2 rounded-lg font-medium transition ${
                   selectedDuration === minutes
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
                 {minutes}m
@@ -142,19 +154,20 @@ export function DurationSelectorModal({ task, isOpen, onClose, onSelect }: Durat
             disabled={selectedDuration === null}
             className={`flex-1 px-4 py-2 rounded-lg font-medium transition ${
               selectedDuration !== null
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
           >
             {selectedDuration !== null
               ? `Start (${formatMinutesToDuration(selectedDuration)})`
-              : 'Start Focus'}
+              : "Start Focus"}
           </button>
         </div>
 
         {/* Info */}
         <p className="text-xs text-gray-500 mt-4 text-center">
-          💡 Countdown is just a visual guide. Actual time tracking continues regardless.
+          💡 Countdown is just a visual guide. Actual time tracking continues
+          regardless.
         </p>
       </div>
     </div>

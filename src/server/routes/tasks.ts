@@ -1,10 +1,14 @@
-import { Hono } from 'hono';
-import { eq, and } from 'drizzle-orm';
-import { zValidator } from '@hono/zod-validator';
-import { createDB, type Env } from '../lib/db';
-import { accessMiddleware, type AccessUser } from '../middleware/access';
-import { tasks, timeEntries } from '../../db/schema';
-import { createTaskSchema, updateTaskSchema, taskQuerySchema } from '../../utils/validation';
+import { Hono } from "hono";
+import { eq, and } from "drizzle-orm";
+import { zValidator } from "@hono/zod-validator";
+import { createDB, type Env } from "../lib/db";
+import { accessMiddleware, type AccessUser } from "../middleware/access";
+import { tasks, timeEntries } from "../../db/schema";
+import {
+  createTaskSchema,
+  updateTaskSchema,
+  taskQuerySchema,
+} from "../../utils/validation";
 
 type Variables = {
   user: AccessUser;
@@ -13,21 +17,21 @@ type Variables = {
 const tasksRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // Apply middleware to all task routes
-tasksRouter.use('*', accessMiddleware);
+tasksRouter.use("*", accessMiddleware);
 
 // GET /api/tasks - List all tasks for user
-tasksRouter.get('/', zValidator('query', taskQuerySchema), async (c) => {
+tasksRouter.get("/", zValidator("query", taskQuerySchema), async (c) => {
   // For demo mode, return empty array since tasks are stored in localStorage
-  if (c.env.NODE_ENV === 'demo') {
+  if (c.env.NODE_ENV === "demo") {
     return c.json({ tasks: [] });
   }
 
-  const { status = 'active', timeBlock, limit = 50 } = c.req.valid('query');
-  const user = c.get('user');
+  const { status = "active", timeBlock, limit = 50 } = c.req.valid("query");
+  const user = c.get("user");
   const db = createDB(c.env);
 
   if (!db) {
-    return c.json({ error: 'Database not available' }, 500);
+    return c.json({ error: "Database not available" }, 500);
   }
 
   try {
@@ -38,130 +42,143 @@ tasksRouter.get('/', zValidator('query', taskQuerySchema), async (c) => {
       conditions.push(eq(tasks.status, status));
     }
 
-    if (timeBlock && timeBlock !== 'all') {
+    if (timeBlock && timeBlock !== "all") {
       conditions.push(eq(tasks.timeBlock, timeBlock));
     }
 
-    const userTasks = await db.select().from(tasks)
+    const userTasks = await db
+      .select()
+      .from(tasks)
       .where(and(...conditions))
       .limit(limit)
       .all();
 
     // Fetch time entries for all tasks
-    const taskIds = userTasks.map(t => t.id);
-    const entries = taskIds.length > 0
-      ? await db.select().from(timeEntries)
-          .where(eq(timeEntries.userId, user.id))
-          .all()
-      : [];
+    const taskIds = userTasks.map((t) => t.id);
+    const entries =
+      taskIds.length > 0
+        ? await db
+            .select()
+            .from(timeEntries)
+            .where(eq(timeEntries.userId, user.id))
+            .all()
+        : [];
 
     // Group time entries by task
-    const entriesByTask = entries.reduce((acc, entry) => {
-      if (!acc[entry.taskId]) acc[entry.taskId] = [];
-      acc[entry.taskId].push(entry);
-      return acc;
-    }, {} as Record<number, typeof entries>);
+    const entriesByTask = entries.reduce(
+      (acc, entry) => {
+        if (!acc[entry.taskId]) acc[entry.taskId] = [];
+        acc[entry.taskId].push(entry);
+        return acc;
+      },
+      {} as Record<number, typeof entries>,
+    );
 
     // Attach time entries to tasks
-    const tasksWithEntries = userTasks.map(task => ({
+    const tasksWithEntries = userTasks.map((task) => ({
       ...task,
-      timeEntries: entriesByTask[task.id] || []
+      timeEntries: entriesByTask[task.id] || [],
     }));
 
     return c.json({ tasks: tasksWithEntries });
   } catch (error) {
-    console.error('Get tasks error:', error);
-    return c.json({ error: 'Failed to fetch tasks' }, 500);
+    console.error("Get tasks error:", error);
+    return c.json({ error: "Failed to fetch tasks" }, 500);
   }
 });
 
 // POST /api/tasks - Create new task
-tasksRouter.post('/', zValidator('json', createTaskSchema), async (c) => {
+tasksRouter.post("/", zValidator("json", createTaskSchema), async (c) => {
   // For demo mode, return a mock task since tasks are stored in localStorage
-  if (c.env.NODE_ENV === 'demo') {
-    const taskData = c.req.valid('json');
+  if (c.env.NODE_ENV === "demo") {
+    const taskData = c.req.valid("json");
     const mockTask = {
       id: Date.now(),
       ...taskData,
       userId: 1,
-      status: 'active',
+      status: "active",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
     return c.json({ task: mockTask }, 201);
   }
 
-  const taskData = c.req.valid('json');
-  const user = c.get('user');
+  const taskData = c.req.valid("json");
+  const user = c.get("user");
   const db = createDB(c.env);
 
   if (!db) {
-    return c.json({ error: 'Database not available' }, 500);
+    return c.json({ error: "Database not available" }, 500);
   }
 
   try {
-    const [newTask] = await db.insert(tasks).values({
-      ...taskData,
-      userId: user.id,
-      status: 'active',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }).returning();
+    const [newTask] = await db
+      .insert(tasks)
+      .values({
+        ...taskData,
+        userId: user.id,
+        status: "active",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
 
     return c.json({ task: newTask }, 201);
   } catch (error) {
-    console.error('Create task error:', error);
-    return c.json({ error: 'Failed to create task' }, 500);
+    console.error("Create task error:", error);
+    return c.json({ error: "Failed to create task" }, 500);
   }
 });
 
 // GET /api/tasks/:id - Get single task
-tasksRouter.get('/:id', async (c) => {
-  const id = parseInt(c.req.param('id'));
+tasksRouter.get("/:id", async (c) => {
+  const id = parseInt(c.req.param("id"));
 
   if (isNaN(id)) {
-    return c.json({ error: 'Invalid task ID' }, 400);
+    return c.json({ error: "Invalid task ID" }, 400);
   }
 
   // For demo mode, return a mock task
-  if (c.env.NODE_ENV === 'demo') {
-    return c.json({ error: 'Task not found' }, 404);
+  if (c.env.NODE_ENV === "demo") {
+    return c.json({ error: "Task not found" }, 404);
   }
 
-  const user = c.get('user');
+  const user = c.get("user");
   const db = createDB(c.env);
 
   if (!db) {
-    return c.json({ error: 'Database not available' }, 500);
+    return c.json({ error: "Database not available" }, 500);
   }
 
   try {
-    const task = await db.select().from(tasks)
+    const task = await db
+      .select()
+      .from(tasks)
       .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
       .get();
 
     if (!task) {
-      return c.json({ error: 'Task not found' }, 404);
+      return c.json({ error: "Task not found" }, 404);
     }
 
     return c.json(task);
   } catch (error) {
-    console.error('Get task error:', error);
-    return c.json({ error: 'Failed to fetch task' }, 500);
+    console.error("Get task error:", error);
+    return c.json({ error: "Failed to fetch task" }, 500);
   }
 });
 
 // PUT /api/tasks/:id - Update task
-tasksRouter.put('/:id', zValidator('json', updateTaskSchema), async (c) => {
-  const id = parseInt(c.req.param('id'));
-  const updateData = c.req.valid('json');
+tasksRouter.put("/:id", zValidator("json", updateTaskSchema), async (c) => {
+  const id = parseInt(c.req.param("id"));
+  const updateData = c.req.valid("json");
 
   if (isNaN(id)) {
-    return c.json({ error: 'Invalid task ID' }, 400);
+    return c.json({ error: "Invalid task ID" }, 400);
   }
 
   // For demo mode, return success without database operations
-  if (c.env.NODE_ENV === 'demo') {
+  if (c.env.NODE_ENV === "demo") {
     const mockTask = {
       id,
       ...updateData,
@@ -171,27 +188,39 @@ tasksRouter.put('/:id', zValidator('json', updateTaskSchema), async (c) => {
     return c.json({ task: mockTask });
   }
 
-  const user = c.get('user');
+  const user = c.get("user");
   const db = createDB(c.env);
 
   if (!db) {
-    return c.json({ error: 'Database not available' }, 500);
+    return c.json({ error: "Database not available" }, 500);
   }
 
   try {
     // Convert string dates to Date objects if present
     const sanitizedData: any = { ...updateData };
-    if (sanitizedData.lastCompletedDate && typeof sanitizedData.lastCompletedDate === 'string') {
-      sanitizedData.lastCompletedDate = new Date(sanitizedData.lastCompletedDate);
+    if (
+      sanitizedData.lastCompletedDate &&
+      typeof sanitizedData.lastCompletedDate === "string"
+    ) {
+      sanitizedData.lastCompletedDate = new Date(
+        sanitizedData.lastCompletedDate,
+      );
     }
-    if (sanitizedData.focusStartedAt && typeof sanitizedData.focusStartedAt === 'string') {
+    if (
+      sanitizedData.focusStartedAt &&
+      typeof sanitizedData.focusStartedAt === "string"
+    ) {
       sanitizedData.focusStartedAt = new Date(sanitizedData.focusStartedAt);
     }
-    if (sanitizedData.pauseStartTime && typeof sanitizedData.pauseStartTime === 'string') {
+    if (
+      sanitizedData.pauseStartTime &&
+      typeof sanitizedData.pauseStartTime === "string"
+    ) {
       sanitizedData.pauseStartTime = new Date(sanitizedData.pauseStartTime);
     }
 
-    const [updatedTask] = await db.update(tasks)
+    const [updatedTask] = await db
+      .update(tasks)
       .set({
         ...sanitizedData,
         updatedAt: new Date(),
@@ -200,82 +229,84 @@ tasksRouter.put('/:id', zValidator('json', updateTaskSchema), async (c) => {
       .returning();
 
     if (!updatedTask) {
-      return c.json({ error: 'Task not found' }, 404);
+      return c.json({ error: "Task not found" }, 404);
     }
 
     return c.json({ task: updatedTask });
   } catch (error) {
-    console.error('Update task error:', error);
-    return c.json({ error: 'Failed to update task' }, 500);
+    console.error("Update task error:", error);
+    return c.json({ error: "Failed to update task" }, 500);
   }
 });
 
 // DELETE /api/tasks/:id - Delete task
-tasksRouter.delete('/:id', async (c) => {
-  const id = parseInt(c.req.param('id'));
+tasksRouter.delete("/:id", async (c) => {
+  const id = parseInt(c.req.param("id"));
 
   if (isNaN(id)) {
-    return c.json({ error: 'Invalid task ID' }, 400);
+    return c.json({ error: "Invalid task ID" }, 400);
   }
 
   // For demo mode, return success response
-  if (c.env.NODE_ENV === 'demo') {
+  if (c.env.NODE_ENV === "demo") {
     return c.json({ success: true });
   }
 
-  const user = c.get('user');
+  const user = c.get("user");
   const db = createDB(c.env);
 
   if (!db) {
-    return c.json({ error: 'Database not available' }, 500);
+    return c.json({ error: "Database not available" }, 500);
   }
 
   try {
-    const [deletedTask] = await db.delete(tasks)
+    const [deletedTask] = await db
+      .delete(tasks)
       .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
       .returning();
 
     if (!deletedTask) {
-      return c.json({ error: 'Task not found' }, 404);
+      return c.json({ error: "Task not found" }, 404);
     }
 
     return c.json({ success: true });
   } catch (error) {
-    console.error('Delete task error:', error);
-    return c.json({ error: 'Failed to delete task' }, 500);
+    console.error("Delete task error:", error);
+    return c.json({ error: "Failed to delete task" }, 500);
   }
 });
 
 // PATCH /api/tasks/:id/complete - Mark task as completed
-tasksRouter.patch('/:id/complete', async (c) => {
-  const id = parseInt(c.req.param('id'));
+tasksRouter.patch("/:id/complete", async (c) => {
+  const id = parseInt(c.req.param("id"));
 
   if (isNaN(id)) {
-    return c.json({ error: 'Invalid task ID' }, 400);
+    return c.json({ error: "Invalid task ID" }, 400);
   }
 
   // For demo mode, return mock completed task
-  if (c.env.NODE_ENV === 'demo') {
+  if (c.env.NODE_ENV === "demo") {
     const mockTask = {
       id,
-      status: 'completed',
+      status: "completed",
       completedAt: new Date(),
       updatedAt: new Date(),
     };
     return c.json({ task: mockTask });
   }
 
-  const user = c.get('user');
+  const user = c.get("user");
   const db = createDB(c.env);
 
   if (!db) {
-    return c.json({ error: 'Database not available' }, 500);
+    return c.json({ error: "Database not available" }, 500);
   }
 
   try {
-    const [completedTask] = await db.update(tasks)
+    const [completedTask] = await db
+      .update(tasks)
       .set({
-        status: 'completed',
+        status: "completed",
         completedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -283,54 +314,56 @@ tasksRouter.patch('/:id/complete', async (c) => {
       .returning();
 
     if (!completedTask) {
-      return c.json({ error: 'Task not found' }, 404);
+      return c.json({ error: "Task not found" }, 404);
     }
 
     return c.json({ task: completedTask });
   } catch (error) {
-    console.error('Complete task error:', error);
-    return c.json({ error: 'Failed to complete task' }, 500);
+    console.error("Complete task error:", error);
+    return c.json({ error: "Failed to complete task" }, 500);
   }
 });
 
 // PATCH /api/tasks/:id/focus/start - Start focus session
-tasksRouter.patch('/:id/focus/start', async (c) => {
+tasksRouter.patch("/:id/focus/start", async (c) => {
   // For demo mode, return a mock response since data is in localStorage
-  if (c.env.NODE_ENV === 'demo') {
+  if (c.env.NODE_ENV === "demo") {
     return c.json({
       task: {
-        id: parseInt(c.req.param('id')),
+        id: parseInt(c.req.param("id")),
         isInFocus: true,
-        focusStartedAt: new Date()
-      }
+        focusStartedAt: new Date(),
+      },
     });
   }
 
-  const id = parseInt(c.req.param('id'));
-  const user = c.get('user');
+  const id = parseInt(c.req.param("id"));
+  const user = c.get("user");
   const db = createDB(c.env);
 
   if (!db) {
-    return c.json({ error: 'Database not available' }, 500);
+    return c.json({ error: "Database not available" }, 500);
   }
 
   try {
     // First, find and stop any other active focus sessions
-    const activeFocusTasks = await db.select()
+    const activeFocusTasks = await db
+      .select()
       .from(tasks)
-      .where(and(
-        eq(tasks.userId, user.id),
-        eq(tasks.isInFocus, true)
-      ))
+      .where(and(eq(tasks.userId, user.id), eq(tasks.isInFocus, true)))
       .all();
 
     // End each active session (except the one we're starting)
     for (const task of activeFocusTasks) {
       if (task.id !== id && task.focusStartedAt) {
-        const elapsed = Math.floor((new Date().getTime() - new Date(task.focusStartedAt).getTime()) / 1000);
+        const elapsed = Math.floor(
+          (new Date().getTime() - new Date(task.focusStartedAt).getTime()) /
+            1000,
+        );
         const durationMinutes = Math.ceil(elapsed / 60);
 
-        await db.update(tasks)
+        await db
+          .update(tasks)
           .set({
             isInFocus: false,
             focusStartedAt: null,
@@ -343,7 +376,8 @@ tasksRouter.patch('/:id/focus/start', async (c) => {
     }
 
     // Now start the new focus session
-    const [updatedTask] = await db.update(tasks)
+    const [updatedTask] = await db
+      .update(tasks)
       .set({
         isInFocus: true,
         focusStartedAt: new Date(),
@@ -353,52 +387,54 @@ tasksRouter.patch('/:id/focus/start', async (c) => {
       .returning();
 
     if (!updatedTask) {
-      return c.json({ error: 'Task not found' }, 404);
+      return c.json({ error: "Task not found" }, 404);
     }
 
     return c.json({ task: updatedTask });
   } catch (error) {
-    console.error('Start focus session error:', error);
-    return c.json({ error: 'Failed to start focus session' }, 500);
+    console.error("Start focus session error:", error);
+    return c.json({ error: "Failed to start focus session" }, 500);
   }
 });
 
 // PATCH /api/tasks/:id/focus/end - End focus session
-tasksRouter.patch('/:id/focus/end', async (c) => {
+tasksRouter.patch("/:id/focus/end", async (c) => {
   // For demo mode, return a mock response since data is in localStorage
-  if (c.env.NODE_ENV === 'demo') {
+  if (c.env.NODE_ENV === "demo") {
     const { duration } = await c.req.json();
-    return c.json({ 
-      task: { 
-        id: parseInt(c.req.param('id')), 
-        isInFocus: false, 
+    return c.json({
+      task: {
+        id: parseInt(c.req.param("id")),
+        isInFocus: false,
         focusStartedAt: null,
-        actualTime: duration 
-      } 
+        actualTime: duration,
+      },
     });
   }
 
-  const id = parseInt(c.req.param('id'));
-  const user = c.get('user');
+  const id = parseInt(c.req.param("id"));
+  const user = c.get("user");
   const db = createDB(c.env);
   const { duration } = await c.req.json();
 
   if (!db) {
-    return c.json({ error: 'Database not available' }, 500);
+    return c.json({ error: "Database not available" }, 500);
   }
 
   try {
     // Get current task to add to existing actualTime
-    const [currentTask] = await db.select()
+    const [currentTask] = await db
+      .select()
       .from(tasks)
       .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
       .limit(1);
 
     if (!currentTask) {
-      return c.json({ error: 'Task not found' }, 404);
+      return c.json({ error: "Task not found" }, 404);
     }
 
-    const [updatedTask] = await db.update(tasks)
+    const [updatedTask] = await db
+      .update(tasks)
       .set({
         isInFocus: false,
         focusStartedAt: null,
@@ -410,45 +446,47 @@ tasksRouter.patch('/:id/focus/end', async (c) => {
 
     return c.json({ task: updatedTask });
   } catch (error) {
-    console.error('End focus session error:', error);
-    return c.json({ error: 'Failed to end focus session' }, 500);
+    console.error("End focus session error:", error);
+    return c.json({ error: "Failed to end focus session" }, 500);
   }
 });
 
 // POST /api/tasks/:id/time - Add time entry
-tasksRouter.post('/:id/time', async (c) => {
+tasksRouter.post("/:id/time", async (c) => {
   // For demo mode, return a mock response since data is in localStorage
-  if (c.env.NODE_ENV === 'demo') {
+  if (c.env.NODE_ENV === "demo") {
     const { duration } = await c.req.json();
-    return c.json({ 
-      task: { 
-        id: parseInt(c.req.param('id')), 
-        actualTime: duration 
-      } 
+    return c.json({
+      task: {
+        id: parseInt(c.req.param("id")),
+        actualTime: duration,
+      },
     });
   }
 
-  const id = parseInt(c.req.param('id'));
-  const user = c.get('user');
+  const id = parseInt(c.req.param("id"));
+  const user = c.get("user");
   const db = createDB(c.env);
   const { duration } = await c.req.json();
 
   if (!db) {
-    return c.json({ error: 'Database not available' }, 500);
+    return c.json({ error: "Database not available" }, 500);
   }
 
   try {
     // Get current task to add to existing actualTime
-    const [currentTask] = await db.select()
+    const [currentTask] = await db
+      .select()
       .from(tasks)
       .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
       .limit(1);
 
     if (!currentTask) {
-      return c.json({ error: 'Task not found' }, 404);
+      return c.json({ error: "Task not found" }, 404);
     }
 
-    const [updatedTask] = await db.update(tasks)
+    const [updatedTask] = await db
+      .update(tasks)
       .set({
         actualTime: (currentTask.actualTime || 0) + duration,
         updatedAt: new Date(),
@@ -458,8 +496,8 @@ tasksRouter.post('/:id/time', async (c) => {
 
     return c.json({ task: updatedTask });
   } catch (error) {
-    console.error('Add time entry error:', error);
-    return c.json({ error: 'Failed to add time entry' }, 500);
+    console.error("Add time entry error:", error);
+    return c.json({ error: "Failed to add time entry" }, 500);
   }
 });
 

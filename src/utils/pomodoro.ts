@@ -1,18 +1,18 @@
-import type { PomodoroSettings, PomodoroState } from './types';
+import type { PomodoroSettings, PomodoroState } from "./types";
 
 /**
  * Get the duration in minutes for the current Pomodoro mode
  */
 export function getPomodoroModeDuration(
-  mode: PomodoroState['currentMode'],
-  settings: PomodoroSettings
+  mode: PomodoroState["currentMode"],
+  settings: PomodoroSettings,
 ): number {
   switch (mode) {
-    case 'work':
+    case "work":
       return settings.workDuration;
-    case 'short-break':
+    case "short-break":
       return settings.shortBreakDuration;
-    case 'long-break':
+    case "long-break":
       return settings.longBreakDuration;
     default:
       return settings.workDuration;
@@ -23,48 +23,48 @@ export function getPomodoroModeDuration(
  * Determine the next Pomodoro mode based on current state
  */
 export function getNextPomodoroMode(
-  currentMode: PomodoroState['currentMode'],
+  currentMode: PomodoroState["currentMode"],
   completedPomodoros: number,
-  pomodorosUntilLongBreak: number
-): PomodoroState['currentMode'] {
-  if (currentMode === 'work') {
+  pomodorosUntilLongBreak: number,
+): PomodoroState["currentMode"] {
+  if (currentMode === "work") {
     // After work, check if it's time for long break
     if (completedPomodoros >= pomodorosUntilLongBreak) {
-      return 'long-break';
+      return "long-break";
     }
-    return 'short-break';
+    return "short-break";
   }
 
   // After any break, return to work
-  return 'work';
+  return "work";
 }
 
 /**
  * Get display info for current Pomodoro mode
  */
-export function getPomodoroModeInfo(mode: PomodoroState['currentMode']) {
+export function getPomodoroModeInfo(mode: PomodoroState["currentMode"]) {
   const modes = {
     work: {
-      label: 'Focus Time',
-      icon: '🍅',
-      color: 'from-blue-900 via-purple-900 to-indigo-900',
-      compactColor: 'bg-blue-600',
-      description: 'Time to focus on your task'
+      label: "Focus Time",
+      icon: "🍅",
+      color: "from-blue-900 via-purple-900 to-indigo-900",
+      compactColor: "bg-blue-600",
+      description: "Time to focus on your task",
     },
-    'short-break': {
-      label: 'Short Break',
-      icon: '☕',
-      color: 'from-green-700 via-emerald-800 to-teal-900',
-      compactColor: 'bg-green-600',
-      description: 'Take a short break, stretch, hydrate'
+    "short-break": {
+      label: "Short Break",
+      icon: "☕",
+      color: "from-green-700 via-emerald-800 to-teal-900",
+      compactColor: "bg-green-600",
+      description: "Take a short break, stretch, hydrate",
     },
-    'long-break': {
-      label: 'Long Break',
-      icon: '🌴',
-      color: 'from-teal-700 via-cyan-800 to-blue-900',
-      compactColor: 'bg-teal-600',
-      description: 'Well done! Take a longer rest'
-    }
+    "long-break": {
+      label: "Long Break",
+      icon: "🌴",
+      color: "from-teal-700 via-cyan-800 to-blue-900",
+      compactColor: "bg-teal-600",
+      description: "Well done! Take a longer rest",
+    },
   };
 
   return modes[mode];
@@ -75,7 +75,7 @@ export function getPomodoroModeInfo(mode: PomodoroState['currentMode']) {
  */
 export function formatPomodoroCounter(
   completedPomodoros: number,
-  totalPomodoros: number
+  totalPomodoros: number,
 ): string {
   return `${completedPomodoros}/${totalPomodoros}`;
 }
@@ -85,7 +85,7 @@ export function formatPomodoroCounter(
  */
 export function isLongBreakTime(
   completedPomodoros: number,
-  pomodorosUntilLongBreak: number
+  pomodorosUntilLongBreak: number,
 ): boolean {
   return completedPomodoros >= pomodorosUntilLongBreak;
 }
@@ -94,25 +94,25 @@ export function isLongBreakTime(
  * Get completion message based on Pomodoro state
  */
 export function getPomodoroCompletionMessage(
-  mode: PomodoroState['currentMode'],
+  mode: PomodoroState["currentMode"],
   completedPomodoros: number,
-  pomodorosUntilLongBreak: number
+  pomodorosUntilLongBreak: number,
 ): string {
-  if (mode === 'work') {
+  if (mode === "work") {
     const remaining = pomodorosUntilLongBreak - completedPomodoros;
     if (remaining === 0) {
-      return '🎉 Great work! Time for a long break!';
+      return "🎉 Great work! Time for a long break!";
     } else if (remaining === 1) {
-      return '🍅 Pomodoro complete! One more until long break!';
+      return "🍅 Pomodoro complete! One more until long break!";
     }
     return `🍅 Pomodoro complete! ${remaining} more until long break`;
   }
 
-  if (mode === 'short-break') {
-    return '☕ Break over! Ready for the next Pomodoro?';
+  if (mode === "short-break") {
+    return "☕ Break over! Ready for the next Pomodoro?";
   }
 
-  return '🌴 Long break complete! Starting fresh cycle';
+  return "🌴 Long break complete! Starting fresh cycle";
 }
 
 /**
@@ -120,12 +120,12 @@ export function getPomodoroCompletionMessage(
  */
 export function loadPomodoroSettings(): PomodoroSettings {
   try {
-    const saved = localStorage.getItem('pomodoroSettings');
+    const saved = localStorage.getItem("pomodoroSettings");
     if (saved) {
       return JSON.parse(saved);
     }
   } catch (error) {
-    console.error('Failed to load Pomodoro settings:', error);
+    console.error("Failed to load Pomodoro settings:", error);
   }
 
   // Return defaults from types
@@ -137,7 +137,7 @@ export function loadPomodoroSettings(): PomodoroSettings {
     autoStartBreaks: false,
     autoStartPomodoros: false,
     playSound: true,
-    showNotifications: true
+    showNotifications: true,
   };
 }
 
@@ -146,9 +146,9 @@ export function loadPomodoroSettings(): PomodoroSettings {
  */
 export function savePomodoroSettings(settings: PomodoroSettings): void {
   try {
-    localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
+    localStorage.setItem("pomodoroSettings", JSON.stringify(settings));
   } catch (error) {
-    console.error('Failed to save Pomodoro settings:', error);
+    console.error("Failed to save Pomodoro settings:", error);
   }
 }
 
@@ -158,7 +158,8 @@ export function savePomodoroSettings(settings: PomodoroSettings): void {
 export function playPomodoroSound(): void {
   try {
     // Simple beep using Web Audio API
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const audioContext = new (window.AudioContext ||
+      (window as any).webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
@@ -166,15 +167,18 @@ export function playPomodoroSound(): void {
     gainNode.connect(audioContext.destination);
 
     oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
+    oscillator.type = "sine";
 
     gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+    gainNode.gain.exponentialRampToValueAtTime(
+      0.01,
+      audioContext.currentTime + 0.5,
+    );
 
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 0.5);
   } catch (error) {
-    console.error('Failed to play sound:', error);
+    console.error("Failed to play sound:", error);
   }
 }
 
@@ -182,11 +186,11 @@ export function playPomodoroSound(): void {
  * Show browser notification (if permitted)
  */
 export function showPomodoroNotification(title: string, body: string): void {
-  if ('Notification' in window && Notification.permission === 'granted') {
+  if ("Notification" in window && Notification.permission === "granted") {
     new Notification(title, {
       body,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico'
+      icon: "/favicon.ico",
+      badge: "/favicon.ico",
     });
   }
 }
@@ -195,9 +199,9 @@ export function showPomodoroNotification(title: string, body: string): void {
  * Request notification permission
  */
 export async function requestNotificationPermission(): Promise<boolean> {
-  if ('Notification' in window) {
+  if ("Notification" in window) {
     const permission = await Notification.requestPermission();
-    return permission === 'granted';
+    return permission === "granted";
   }
   return false;
 }
