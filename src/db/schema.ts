@@ -41,6 +41,12 @@ export const tasks = sqliteTable('tasks', {
   isInFocus: integer('is_in_focus', { mode: 'boolean' }).default(false), // currently in focus mode
   focusStartedAt: integer('focus_started_at', { mode: 'timestamp' }), // when current focus session started
 
+  // Scheduling fields
+  scheduledFor: text('scheduled_for'), // 'today' | 'this-week' | 'this-month' | 'someday'
+  recurringPattern: text('recurring_pattern'), // 'daily' | 'weekly' | 'monthly' | null
+  lastCompletedDate: integer('last_completed_date', { mode: 'timestamp' }), // for recurring tasks
+  streakCount: integer('streak_count').default(0), // consecutive completions
+
   // Timestamps
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),

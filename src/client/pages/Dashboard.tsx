@@ -1,14 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, Clock, Archive, X, Play, Settings, Info, HelpCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, Clock, Archive, X, Play, Settings, Info, HelpCircle, Target, TrendingUp } from 'lucide-react';
 import { api } from '../lib/api';
 import { taskStorage } from '../../lib/storage';
 import { APP_CONFIG } from '../../utils/config';
 import { DemoNotice } from '../components/DemoNotice';
 import { FocusModeModal } from '../components/FocusModeModal';
 import { ICEWeightsSettings } from '../components/ICEWeightsSettings';
+import { PomodoroSettingsComponent } from '../components/PomodoroSettings';
+import { QuickAddFAB } from '../components/QuickAddFAB';
 import { calculateICE, calculateWeightedICE, getDecisionInfo, getTimeBlockInfo, DEFAULT_ICE_WEIGHTS } from '../lib/helpers';
 import { getDecisionRecommendation } from '../../utils/algorithms';
-import type { Task, CreateTaskInput, User, OverviewStats, ICEWeights } from '../../utils/types';
+import { loadPomodoroSettings, savePomodoroSettings } from '../../utils/pomodoro';
+import type { Task, CreateTaskInput, User, OverviewStats, ICEWeights, SchedulingWindow, RecurringPattern, PomodoroSettings } from '../../utils/types';
 
 const Dashboard = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -26,7 +30,9 @@ const Dashboard = () => {
     timeBlock: 'quick',
     estimatedTime: 30,
     decision: 'do',
-    notes: ''
+    notes: '',
+    scheduledFor: 'someday',
+    recurringPattern: null
   });
 
   const [activeTab, setActiveTab] = useState('all');
@@ -50,6 +56,10 @@ const Dashboard = () => {
   const [iceWeights, setIceWeights] = useState<ICEWeights>(DEFAULT_ICE_WEIGHTS);
   const [showWeightsSettings, setShowWeightsSettings] = useState(false);
   const [useWeightedScoring, setUseWeightedScoring] = useState(true);
+
+  // Pomodoro settings
+  const [showPomodoroSettings, setShowPomodoroSettings] = useState(false);
+  const [pomodoroSettings, setPomodoroSettings] = useState<PomodoroSettings>(loadPomodoroSettings());
 
   // UI collapse states
   const [showICEGuide, setShowICEGuide] = useState(false);
@@ -112,26 +122,33 @@ const Dashboard = () => {
     };
   }, []);
 
-  const addTask = async () => {
-    if (!newTask.name.trim()) return;
+  const addTask = async (taskToAdd?: CreateTaskInput) => {
+    const taskData = taskToAdd || newTask;
+    if (!taskData.name.trim()) return;
 
     try {
-      const createdTask = APP_CONFIG.IS_DEMO 
-        ? await taskStorage.createTask(newTask)
-        : await api.createTask(newTask);
-        
+      const createdTask = APP_CONFIG.IS_DEMO
+        ? await taskStorage.createTask(taskData)
+        : await api.createTask(taskData);
+
       setTasks([...tasks, createdTask]);
-      setNewTask({
-        name: '',
-        impact: 5,
-        confidence: 5,
-        ease: 5,
-        type: 'operations',
-        timeBlock: 'quick',
-        estimatedTime: 30,
-        decision: 'do',
-        notes: ''
-      });
+
+      // Only reset newTask if we're using the form (not QuickAdd)
+      if (!taskToAdd) {
+        setNewTask({
+          name: '',
+          impact: 5,
+          confidence: 5,
+          ease: 5,
+          type: 'operations',
+          timeBlock: 'quick',
+          estimatedTime: 30,
+          decision: 'do',
+          notes: '',
+          scheduledFor: 'someday',
+          recurringPattern: null
+        });
+      }
 
       // Refresh stats
       const updatedStats = APP_CONFIG.IS_DEMO 
@@ -472,14 +489,38 @@ const Dashboard = () => {
               <p className="text-sm text-gray-500 mb-4">Welcome, {user.name || user.email}</p>
             )}
           </div>
-          <button
-            onClick={() => setShowWeightsSettings(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-            title="Configure ICE Weights"
-          >
-            <Settings size={18} />
-            <span className="hidden sm:inline">ICE Weights</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/focus"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <Target size={18} />
+              <span className="hidden sm:inline">Focus View</span>
+            </Link>
+            <Link
+              to="/reports"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <TrendingUp size={18} />
+              <span className="hidden sm:inline">Reports</span>
+            </Link>
+            <button
+              onClick={() => setShowPomodoroSettings(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+              title="Pomodoro Settings"
+            >
+              <span className="text-lg">🍅</span>
+              <span className="hidden sm:inline">Pomodoro</span>
+            </button>
+            <button
+              onClick={() => setShowWeightsSettings(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+              title="Configure ICE Weights"
+            >
+              <Settings size={18} />
+              <span className="hidden sm:inline">ICE Weights</span>
+            </button>
+          </div>
         </div>
 
         {/* Collapsible ICE Guide */}
@@ -625,7 +666,7 @@ const Dashboard = () => {
       </div>
 
       {/* Add Task Form */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-6" data-add-task-form>
         <h2 className="text-xl font-bold text-gray-800 mb-4">➕ Thêm Task Mới</h2>
         <div className="grid grid-cols-1 md:grid-cols-7 gap-4 mb-4">
           <input
@@ -703,7 +744,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div>
             <label className="block text-xs text-gray-600 mb-1">Estimated Time (phút)</label>
             <input
@@ -728,6 +769,34 @@ const Dashboard = () => {
               <option value="delete">🗑️ DELETE - Loại bỏ</option>
             </select>
           </div>
+
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">📅 Schedule For</label>
+            <select
+              value={newTask.scheduledFor}
+              onChange={(e) => setNewTask({ ...newTask, scheduledFor: e.target.value as SchedulingWindow })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="today">🎯 Today</option>
+              <option value="this-week">📅 This Week</option>
+              <option value="this-month">📊 This Month</option>
+              <option value="someday">💭 Someday / Backlog</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">🔄 Recurring</label>
+            <select
+              value={newTask.recurringPattern || ''}
+              onChange={(e) => setNewTask({ ...newTask, recurringPattern: (e.target.value || null) as RecurringPattern })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="">None</option>
+              <option value="daily">🔄 Daily</option>
+              <option value="weekly">📆 Weekly</option>
+              <option value="monthly">📅 Monthly</option>
+            </select>
+          </div>
         </div>
 
         <div className="mb-4">
@@ -741,7 +810,7 @@ const Dashboard = () => {
         </div>
 
         <button
-          onClick={addTask}
+          onClick={() => addTask()}
           className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center transition"
         >
           <Plus className="mr-2" size={20} />
@@ -1403,6 +1472,32 @@ const Dashboard = () => {
         currentWeights={iceWeights}
         onClose={() => setShowWeightsSettings(false)}
         onSave={handleSaveWeights}
+      />
+
+      {/* Pomodoro Settings Modal */}
+      <PomodoroSettingsComponent
+        isOpen={showPomodoroSettings}
+        currentSettings={pomodoroSettings}
+        onClose={() => setShowPomodoroSettings(false)}
+        onSave={(settings) => {
+          setPomodoroSettings(settings);
+          savePomodoroSettings(settings);
+          setShowPomodoroSettings(false);
+        }}
+      />
+
+      {/* Quick Add FAB */}
+      <QuickAddFAB
+        onAdd={async (task) => {
+          await addTask(task);
+        }}
+        onShowFullForm={() => {
+          // Scroll to the add task form
+          const addTaskForm = document.querySelector('[data-add-task-form]');
+          if (addTaskForm) {
+            addTaskForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }}
       />
 
       {/* Celebration Effect */}

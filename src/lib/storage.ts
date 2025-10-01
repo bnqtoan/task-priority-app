@@ -1,4 +1,4 @@
-import type { Task, CreateTaskInput, User, UserPreferences, OverviewStats } from '../utils/types'
+import type { Task, CreateTaskInput, User, UserPreferences, OverviewStats, SchedulingWindow, DailyCapacity } from '../utils/types'
 import { APP_CONFIG } from '../utils/config'
 import { api } from '../client/lib/api'
 import { initializeDemoData } from './demo-data'
@@ -6,7 +6,7 @@ import { initializeDemoData } from './demo-data'
 // Storage interface that both localStorage and API implementations follow
 interface TaskStorage {
   // Tasks
-  getTasks(params?: { status?: string; timeBlock?: string; limit?: number }): Promise<Task[]>
+  getTasks(params?: { status?: string; timeBlock?: string; scheduledFor?: SchedulingWindow; limit?: number }): Promise<Task[]>
   createTask(task: CreateTaskInput): Promise<Task>
   updateTask(id: number, task: Partial<Task>): Promise<Task>
   deleteTask(id: number): Promise<void>
@@ -17,10 +17,17 @@ interface TaskStorage {
   endFocusSession(taskId: number, duration: number): Promise<Task>
   addTimeEntry(taskId: number, duration: number, type: 'focus' | 'regular'): Promise<Task>
 
+  // Scheduling
+  getTasksForToday(): Promise<Task[]>
+  getTasksForWeek(): Promise<Task[]>
+  getTasksForMonth(): Promise<Task[]>
+  getDailyCapacity(date?: Date): Promise<DailyCapacity>
+  completeRecurringTask(id: number): Promise<Task>
+
   // User
   getCurrentUser(): Promise<User>
 
-  // Preferences  
+  // Preferences
   getPreferences(): Promise<UserPreferences>
   updatePreferences(preferences: Partial<UserPreferences>): Promise<UserPreferences>
 
@@ -48,7 +55,7 @@ class LocalStorageTaskStorage implements TaskStorage {
     localStorage.setItem('demo-tasks', JSON.stringify(tasks))
   }
 
-  async getTasks(params?: { status?: string; timeBlock?: string; limit?: number }): Promise<Task[]> {
+  async getTasks(params?: { status?: string; timeBlock?: string; scheduledFor?: SchedulingWindow; limit?: number }): Promise<Task[]> {
     let tasks = this.getTasksSync()
 
     // Apply filters if provided
@@ -58,6 +65,10 @@ class LocalStorageTaskStorage implements TaskStorage {
 
     if (params?.timeBlock && params.timeBlock !== 'all') {
       tasks = tasks.filter(task => task.timeBlock === params.timeBlock)
+    }
+
+    if (params?.scheduledFor) {
+      tasks = tasks.filter(task => task.scheduledFor === params.scheduledFor)
     }
 
     // Apply limit if provided
@@ -119,6 +130,51 @@ class LocalStorageTaskStorage implements TaskStorage {
     return this.updateTask(id, { status: 'completed', completedAt: new Date() })
   }
 
+  async completeRecurringTask(id: number): Promise<Task> {
+    const tasks = this.getTasksSync()
+    const task = tasks.find(t => t.id === id)
+
+    if (!task) {
+      throw new Error('Task not found')
+    }
+
+    if (!task.recurringPattern) {
+      // Not a recurring task, just complete it normally
+      return this.completeTask(id)
+    }
+
+    // For recurring tasks, update last completed date and increment streak
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const lastCompleted = task.lastCompletedDate ? new Date(task.lastCompletedDate) : null
+    let newStreak = task.streakCount || 0
+
+    // Calculate streak
+    if (lastCompleted) {
+      const daysDiff = Math.floor((today.getTime() - lastCompleted.getTime()) / (1000 * 60 * 60 * 24))
+
+      if (task.recurringPattern === 'daily' && daysDiff === 1) {
+        newStreak += 1
+      } else if (task.recurringPattern === 'weekly' && daysDiff >= 6 && daysDiff <= 8) {
+        newStreak += 1
+      } else if (task.recurringPattern === 'monthly' && daysDiff >= 28 && daysDiff <= 32) {
+        newStreak += 1
+      } else {
+        newStreak = 1 // Reset streak
+      }
+    } else {
+      newStreak = 1 // First completion
+    }
+
+    return this.updateTask(id, {
+      lastCompletedDate: today,
+      streakCount: newStreak,
+      status: 'completed',
+      completedAt: new Date()
+    })
+  }
+
   async startFocusSession(taskId: number): Promise<Task> {
     return this.updateTask(taskId, { 
       isInFocus: true, 
@@ -151,6 +207,111 @@ class LocalStorageTaskStorage implements TaskStorage {
     const updatedTasks = tasks.map(t => t.id === taskId ? updatedTask : t)
     this.saveTasksSync(updatedTasks)
     return updatedTask
+  }
+
+  async getTasksForToday(): Promise<Task[]> {
+    const tasks = this.getTasksSync()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    return tasks.filter(task => {
+      if (task.status !== 'active') return false
+
+      // Include tasks scheduled for today
+      if (task.scheduledFor === 'today') return true
+
+      // Include recurring daily tasks not completed today
+      if (task.recurringPattern === 'daily') {
+        const lastCompleted = task.lastCompletedDate ? new Date(task.lastCompletedDate) : null
+        if (!lastCompleted || lastCompleted < today) {
+          return true
+        }
+      }
+
+      return false
+    })
+  }
+
+  async getTasksForWeek(): Promise<Task[]> {
+    const tasks = this.getTasksSync()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    // Get start of week (Sunday)
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - today.getDay())
+
+    return tasks.filter(task => {
+      if (task.status !== 'active') return false
+
+      // Include tasks scheduled for today or this-week
+      if (task.scheduledFor === 'today' || task.scheduledFor === 'this-week') {
+        return true
+      }
+
+      // Include recurring weekly tasks not completed this week
+      if (task.recurringPattern === 'weekly') {
+        const lastCompleted = task.lastCompletedDate ? new Date(task.lastCompletedDate) : null
+        if (!lastCompleted || lastCompleted < startOfWeek) {
+          return true
+        }
+      }
+
+      // Include recurring daily tasks
+      if (task.recurringPattern === 'daily') {
+        return true
+      }
+
+      return false
+    })
+  }
+
+  async getTasksForMonth(): Promise<Task[]> {
+    const tasks = this.getTasksSync()
+    const today = new Date()
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+
+    return tasks.filter(task => {
+      if (task.status !== 'active') return false
+
+      // Include tasks scheduled for today, this-week, or this-month
+      if (task.scheduledFor === 'today' || task.scheduledFor === 'this-week' || task.scheduledFor === 'this-month') {
+        return true
+      }
+
+      // Include recurring monthly tasks not completed this month
+      if (task.recurringPattern === 'monthly') {
+        const lastCompleted = task.lastCompletedDate ? new Date(task.lastCompletedDate) : null
+        if (!lastCompleted || lastCompleted < startOfMonth) {
+          return true
+        }
+      }
+
+      // Include recurring weekly and daily tasks
+      if (task.recurringPattern === 'weekly' || task.recurringPattern === 'daily') {
+        return true
+      }
+
+      return false
+    })
+  }
+
+  async getDailyCapacity(date?: Date): Promise<DailyCapacity> {
+    const targetDate = date || new Date()
+    targetDate.setHours(0, 0, 0, 0)
+
+    const tasks = await this.getTasksForToday()
+
+    const totalMinutes = 8 * 60 // Assume 8 hour workday
+    const scheduledMinutes = tasks.reduce((sum, task) => sum + task.estimatedTime, 0)
+    const availableMinutes = totalMinutes - scheduledMinutes
+
+    return {
+      totalMinutes,
+      scheduledMinutes,
+      availableMinutes,
+      tasks
+    }
   }
 
   async getCurrentUser(): Promise<User> {
@@ -239,7 +400,7 @@ class LocalStorageTaskStorage implements TaskStorage {
 }
 
 class ApiTaskStorage implements TaskStorage {
-  async getTasks(params?: { status?: string; timeBlock?: string; limit?: number }): Promise<Task[]> {
+  async getTasks(params?: { status?: string; timeBlock?: string; scheduledFor?: SchedulingWindow; limit?: number }): Promise<Task[]> {
     return api.getTasks(params)
   }
 
@@ -259,6 +420,13 @@ class ApiTaskStorage implements TaskStorage {
     return api.completeTask(id)
   }
 
+  async completeRecurringTask(id: number): Promise<Task> {
+    // API implementation - would call api.completeRecurringTask()
+    // For now, use same logic as LocalStorage
+    const localStorage = new LocalStorageTaskStorage()
+    return localStorage.completeRecurringTask(id)
+  }
+
   async startFocusSession(taskId: number): Promise<Task> {
     return api.startFocusSession(taskId)
   }
@@ -269,6 +437,27 @@ class ApiTaskStorage implements TaskStorage {
 
   async addTimeEntry(taskId: number, duration: number, type: 'focus' | 'regular'): Promise<Task> {
     return api.addTimeEntry(taskId, duration, type)
+  }
+
+  async getTasksForToday(): Promise<Task[]> {
+    // API implementation - would call api.getTasksForToday()
+    const localStorage = new LocalStorageTaskStorage()
+    return localStorage.getTasksForToday()
+  }
+
+  async getTasksForWeek(): Promise<Task[]> {
+    const localStorage = new LocalStorageTaskStorage()
+    return localStorage.getTasksForWeek()
+  }
+
+  async getTasksForMonth(): Promise<Task[]> {
+    const localStorage = new LocalStorageTaskStorage()
+    return localStorage.getTasksForMonth()
+  }
+
+  async getDailyCapacity(date?: Date): Promise<DailyCapacity> {
+    const localStorage = new LocalStorageTaskStorage()
+    return localStorage.getDailyCapacity(date)
   }
 
   async getCurrentUser(): Promise<User> {
@@ -296,7 +485,7 @@ class DynamicTaskStorage implements TaskStorage {
       : new ApiTaskStorage()
   }
 
-  async getTasks(params?: { status?: string; timeBlock?: string; limit?: number }): Promise<Task[]> {
+  async getTasks(params?: { status?: string; timeBlock?: string; scheduledFor?: SchedulingWindow; limit?: number }): Promise<Task[]> {
     return this.getStorage().getTasks(params)
   }
 
@@ -316,6 +505,10 @@ class DynamicTaskStorage implements TaskStorage {
     return this.getStorage().completeTask(id)
   }
 
+  async completeRecurringTask(id: number): Promise<Task> {
+    return this.getStorage().completeRecurringTask(id)
+  }
+
   async startFocusSession(taskId: number): Promise<Task> {
     return this.getStorage().startFocusSession(taskId)
   }
@@ -326,6 +519,22 @@ class DynamicTaskStorage implements TaskStorage {
 
   async addTimeEntry(taskId: number, duration: number, type: 'focus' | 'regular'): Promise<Task> {
     return this.getStorage().addTimeEntry(taskId, duration, type)
+  }
+
+  async getTasksForToday(): Promise<Task[]> {
+    return this.getStorage().getTasksForToday()
+  }
+
+  async getTasksForWeek(): Promise<Task[]> {
+    return this.getStorage().getTasksForWeek()
+  }
+
+  async getTasksForMonth(): Promise<Task[]> {
+    return this.getStorage().getTasksForMonth()
+  }
+
+  async getDailyCapacity(date?: Date): Promise<DailyCapacity> {
+    return this.getStorage().getDailyCapacity(date)
   }
 
   async getCurrentUser(): Promise<User> {

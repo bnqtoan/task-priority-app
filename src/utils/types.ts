@@ -1,4 +1,7 @@
 // Shared types for frontend and backend
+export type SchedulingWindow = 'today' | 'this-week' | 'this-month' | 'someday';
+export type RecurringPattern = 'daily' | 'weekly' | 'monthly' | null;
+
 export interface Task {
   id: number;
   userId: number;
@@ -20,6 +23,11 @@ export interface Task {
   timeEntries?: TimeEntry[];
   isInFocus?: boolean; // currently in focus mode
   focusStartedAt?: Date; // when current focus session started
+  // Scheduling fields
+  scheduledFor?: SchedulingWindow; // when you plan to work on this
+  recurringPattern?: RecurringPattern; // for recurring tasks
+  lastCompletedDate?: Date; // tracks when recurring task was last completed
+  streakCount?: number; // consecutive completions for recurring tasks
 }
 
 export interface TimeEntry {
@@ -66,10 +74,14 @@ export interface CreateTaskInput {
   timeBlock: Task['timeBlock'];
   estimatedTime: number;
   decision: Task['decision'];
+  scheduledFor?: SchedulingWindow;
+  recurringPattern?: RecurringPattern;
 }
 
 export interface UpdateTaskInput extends Partial<CreateTaskInput> {
   status?: Task['status'];
+  lastCompletedDate?: Date;
+  streakCount?: number;
 }
 
 export interface UpdatePreferencesInput {
@@ -124,4 +136,122 @@ export interface FocusSession {
 export interface FocusQuote {
   text: string;
   author: string;
+}
+
+// Pomodoro Settings
+export interface PomodoroSettings {
+  workDuration: number;           // minutes, 15-60
+  shortBreakDuration: number;     // minutes, 3-15
+  longBreakDuration: number;      // minutes, 10-30
+  pomodorosUntilLongBreak: number; // 2-8
+  autoStartBreaks: boolean;
+  autoStartPomodoros: boolean;
+  playSound: boolean;
+  showNotifications: boolean;
+}
+
+export interface PomodoroState {
+  isEnabled: boolean;
+  currentMode: 'work' | 'short-break' | 'long-break';
+  completedPomodoros: number;     // in current cycle
+  totalPomodorosToday: number;   // daily stats
+}
+
+export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
+  workDuration: 25,
+  shortBreakDuration: 5,
+  longBreakDuration: 15,
+  pomodorosUntilLongBreak: 4,
+  autoStartBreaks: false,
+  autoStartPomodoros: false,
+  playSound: true,
+  showNotifications: true
+};
+
+// Scheduling-related types
+export interface DailyCapacity {
+  totalMinutes: number;
+  scheduledMinutes: number;
+  availableMinutes: number;
+  tasks: Task[];
+}
+
+export interface TaskScheduleSuggestion {
+  task: Task;
+  reason: string;
+  suggestedTimeBlock: Task['timeBlock'];
+  priority: 'high' | 'medium' | 'low';
+}
+
+// Reports & Analytics types
+export type TimeRangePreset = 'today' | 'week' | 'month' | 'last7' | 'last30' | 'last90' | 'custom' | 'all';
+
+export interface DateRange {
+  start: Date;
+  end: Date;
+  preset: TimeRangePreset;
+}
+
+export interface TimeStats {
+  totalMinutes: number;
+  totalTasks: number;
+  completedTasks: number;
+  activeTasks: number;
+  focusSessions: number;
+  pomodoros: number;
+  avgTimePerTask: number;
+  estimatedTime: number;
+  actualTime: number;
+  variance: number; // percentage
+}
+
+export interface TimeByCategory {
+  category: string;
+  minutes: number;
+  percentage: number;
+  taskCount: number;
+}
+
+export interface DailyTimeData {
+  date: string;
+  totalMinutes: number;
+  completedTasks: number;
+  focusSessions: number;
+}
+
+export interface HourlyTimeData {
+  hour: number;
+  minutes: number;
+  label: string;
+}
+
+export interface TopTask {
+  id: number;
+  name: string;
+  minutes: number;
+  percentage: number;
+  type: Task['type'];
+  iceScore: number;
+}
+
+export interface ProductivityMetrics {
+  score: number;
+  focusTimeRatio: number;
+  completionRate: number;
+  estimateAccuracy: number;
+  pomodoroCompletionRate: number;
+  deepWorkRatio: number;
+  suggestions: string[];
+}
+
+export interface ReportData {
+  dateRange: DateRange;
+  timeStats: TimeStats;
+  byType: TimeByCategory[];
+  byTimeBlock: TimeByCategory[];
+  byDecision: TimeByCategory[];
+  dailyData: DailyTimeData[];
+  hourlyData: HourlyTimeData[];
+  topTasks: TopTask[];
+  productivityMetrics: ProductivityMetrics;
 }
