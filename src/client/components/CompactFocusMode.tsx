@@ -1,6 +1,7 @@
 import { Play, Pause, CheckCircle, X, Maximize2, Minimize2 } from 'lucide-react';
-import type { Task, PomodoroSettings, PomodoroState } from '../../utils/types';
+import type { Task, PomodoroSettings, PomodoroState, TimerMode } from '../../utils/types';
 import { getPomodoroModeInfo, formatPomodoroCounter } from '../../utils/pomodoro';
+import { formatCountdown, formatElapsed, calculateRemaining } from '../../utils/timer-modes';
 
 interface CompactFocusModeProps {
   task: Task;
@@ -8,6 +9,11 @@ interface CompactFocusModeProps {
   isPaused: boolean;
   pomodoroState?: PomodoroState;
   pomodoroSettings?: PomodoroSettings;
+  timerMode?: TimerMode;
+  targetDuration?: number | null;
+  countdownCompleted?: boolean;
+  startTime?: Date;
+  pausedTime?: number;
   onPause: () => void;
   onComplete: () => void;
   onClose: () => void;
@@ -22,6 +28,11 @@ export function CompactFocusMode({
   isPaused,
   pomodoroState,
   pomodoroSettings,
+  timerMode = 'countup',
+  targetDuration = null,
+  countdownCompleted = false,
+  startTime,
+  pausedTime = 0,
   onPause,
   onComplete,
   onClose,
@@ -29,6 +40,10 @@ export function CompactFocusMode({
   isMinimized = false,
   onToggleMinimize
 }: CompactFocusModeProps) {
+  // Calculate remaining time for countdown mode
+  const remainingSeconds = timerMode === 'countdown' && targetDuration && startTime
+    ? calculateRemaining(startTime, targetDuration, pausedTime)
+    : 0;
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -57,7 +72,13 @@ export function CompactFocusMode({
                 {modeInfo?.icon} {pomodoroState.completedPomodoros}/{pomodoroSettings?.pomodorosUntilLongBreak}
               </span>
             )}
-            <span className="font-mono font-bold text-lg">{formatTime(elapsedTime)}</span>
+            {timerMode === 'countdown' && targetDuration ? (
+              <span className="font-mono font-bold text-lg">
+                {formatCountdown(remainingSeconds)} {countdownCompleted && '⏱️'}
+              </span>
+            ) : (
+              <span className="font-mono font-bold text-lg">{formatTime(elapsedTime)}</span>
+            )}
           </div>
           <button
             onClick={onToggleMinimize}
@@ -85,7 +106,18 @@ export function CompactFocusMode({
               )}
             </span>
           )}
-          <span className="font-mono font-bold text-xl">{formatTime(elapsedTime)}</span>
+          {timerMode === 'countdown' && targetDuration ? (
+            <div className="flex flex-col">
+              <span className="font-mono font-bold text-xl">
+                {formatCountdown(remainingSeconds)} {countdownCompleted && '🎉'}
+              </span>
+              <span className="text-xs opacity-75">
+                Elapsed: {formatElapsed(elapsedTime)}
+              </span>
+            </div>
+          ) : (
+            <span className="font-mono font-bold text-xl">{formatTime(elapsedTime)}</span>
+          )}
         </div>
 
         {/* Middle: Task name */}

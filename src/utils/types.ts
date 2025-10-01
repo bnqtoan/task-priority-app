@@ -23,6 +23,10 @@ export interface Task {
   timeEntries?: TimeEntry[];
   isInFocus?: boolean; // currently in focus mode
   focusStartedAt?: Date; // when current focus session started
+  targetDuration?: number | null; // countdown timer target in minutes
+  isPaused?: boolean; // whether timer is currently paused
+  pausedTime?: number; // accumulated pause time in seconds
+  pauseStartTime?: Date | null; // when current pause started
   // Scheduling fields
   scheduledFor?: SchedulingWindow; // when you plan to work on this
   recurringPattern?: RecurringPattern; // for recurring tasks
@@ -82,6 +86,9 @@ export interface UpdateTaskInput extends Partial<CreateTaskInput> {
   status?: Task['status'];
   lastCompletedDate?: Date;
   streakCount?: number;
+  isPaused?: boolean;
+  pausedTime?: number;
+  pauseStartTime?: Date | null;
 }
 
 export interface UpdatePreferencesInput {
@@ -123,6 +130,8 @@ export interface TaskRecommendations {
   [taskId: number]: AIRecommendation;
 }
 
+export type TimerMode = 'countup' | 'countdown';
+
 export interface FocusSession {
   id: string;
   taskId: number;
@@ -131,6 +140,9 @@ export interface FocusSession {
   duration?: number; // in minutes
   isActive: boolean;
   quote?: string; // motivational quote for this session
+  targetDuration?: number; // countdown target in minutes, null = count-up mode
+  timerMode: TimerMode;
+  countdownCompletedAt?: Date; // when countdown hit zero
 }
 
 export interface FocusQuote {
@@ -170,10 +182,13 @@ export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
 
 // Scheduling-related types
 export interface DailyCapacity {
-  totalMinutes: number;
-  scheduledMinutes: number;
-  availableMinutes: number;
-  tasks: Task[];
+  date: Date;
+  totalTasks: number;
+  completedTasks: number;
+  estimatedMinutes: number;
+  actualMinutes: number;
+  remainingMinutes: number;
+  utilizationPercent: number;
 }
 
 export interface TaskScheduleSuggestion {
@@ -254,4 +269,81 @@ export interface ReportData {
   hourlyData: HourlyTimeData[];
   topTasks: TopTask[];
   productivityMetrics: ProductivityMetrics;
+}
+
+// Notes types
+export type NoteCategory = 'daily-log' | 'task-note' | 'reflection' | 'idea' | 'meeting';
+
+export interface NoteMetadata {
+  mood?: 'great' | 'good' | 'neutral' | 'tired' | 'stressed';
+  energy?: 'high' | 'medium' | 'low';
+  location?: string;
+  context?: string[];
+}
+
+export interface Note {
+  id: number;
+  userId: number;
+  taskId?: number | null;
+  title: string;
+  content: string; // markdown
+  category: NoteCategory;
+  tags?: string[];
+  metadata?: NoteMetadata;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateNoteInput {
+  title: string;
+  content: string;
+  category?: NoteCategory;
+  taskId?: number | null;
+  tags?: string[];
+  metadata?: NoteMetadata;
+}
+
+export interface UpdateNoteInput extends Partial<CreateNoteInput> {}
+
+// End-of-Day Insights types
+export interface NeglectedTask {
+  task: Task;
+  iceScore: number;
+  minutesToday: number;
+  reason: string;
+}
+
+export interface TimeDistributionInsight {
+  planned: { [key: string]: number };
+  actual: { [key: string]: number };
+  variance: { [key: string]: number };
+}
+
+export interface EnergyAlignmentInsight {
+  peakHours: number[]; // hours like [9, 10, 11]
+  deepWorkDuringPeak: number; // minutes
+  deepWorkOffPeak: number; // minutes
+  alignmentScore: number; // 0-100
+  recommendation: string;
+}
+
+export interface EndOfDayInsights {
+  date: Date;
+  neglectedPriorities: NeglectedTask[];
+  completionMomentum: {
+    completed: number;
+    started: number;
+    completionRate: number;
+    topCompletions: TopTask[];
+  };
+  timeDistribution: TimeDistributionInsight;
+  energyAlignment: EnergyAlignmentInsight;
+  focusQuality: {
+    averageSessionMinutes: number;
+    totalSessions: number;
+    longestSession: number;
+    interruptionCount: number;
+  };
+  tomorrowRecommendations: TaskScheduleSuggestion[];
+  wins: string[];
 }

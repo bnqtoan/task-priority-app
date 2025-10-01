@@ -6,6 +6,7 @@ import authRoutes from './routes/auth';
 import tasksRoutes from './routes/tasks';
 import preferencesRoutes from './routes/preferences';
 import statsRoutes from './routes/stats';
+import notesRoutes from './routes/notes';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -17,15 +18,15 @@ app.route('/api/auth', authRoutes);
 app.route('/api/tasks', tasksRoutes);
 app.route('/api/preferences', preferencesRoutes);
 app.route('/api/stats', statsRoutes);
+app.route('/api/notes', notesRoutes);
 
 // Health check
 app.get('/api/health', (c) => {
   return c.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
-// Serve static files (React app) - commented out for development
-// In production, uncomment and configure properly with asset manifest
-// app.use('/*', serveStatic());
-// app.get('*', serveStatic({ path: './index.html' }));
+// Export for development (Hono app only)
+export { app };
 
+// Export for production (Cloudflare Workers)
 export default app;

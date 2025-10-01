@@ -5,6 +5,7 @@ import * as schema from '../../db/schema';
 
 export interface Env {
   DB?: D1Database;
+  ASSETS?: Fetcher;
   ACCESS_AUD?: string;
   NODE_ENV?: string;
 }

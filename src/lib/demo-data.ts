@@ -1,4 +1,21 @@
-import type { Task, User, UserPreferences } from '../utils/types'
+import type { Task, User, UserPreferences, TimeEntry } from '../utils/types'
+
+// Helper to generate recent dates
+const daysAgo = (days: number): Date => {
+  const date = new Date()
+  date.setDate(date.getDate() - days)
+  return date
+}
+
+// Helper to create time entries
+const createTimeEntry = (taskId: number, startDate: Date, durationMinutes: number, type: 'focus' | 'regular' = 'focus'): TimeEntry => ({
+  id: `${taskId}-${startDate.getTime()}-${Math.random().toString(36).substr(2, 9)}`,
+  taskId,
+  startTime: startDate,
+  endTime: new Date(startDate.getTime() + durationMinutes * 60000),
+  duration: durationMinutes,
+  type
+})
 
 export const DEMO_SEED_DATA = {
   user: {
@@ -24,9 +41,16 @@ export const DEMO_SEED_DATA = {
       actualTime: 145,
       status: "active",
       isInFocus: false,
+      scheduledFor: "today",
+      recurringPattern: null,
       userId: 1,
-      createdAt: new Date('2024-01-15'),
-      updatedAt: new Date('2024-01-15')
+      createdAt: daysAgo(7),
+      updatedAt: daysAgo(1),
+      timeEntries: [
+        createTimeEntry(1, new Date(daysAgo(5).setHours(9, 30, 0, 0)), 60, 'focus'),
+        createTimeEntry(1, new Date(daysAgo(3).setHours(14, 15, 0, 0)), 45, 'focus'),
+        createTimeEntry(1, new Date(daysAgo(1).setHours(10, 0, 0, 0)), 40, 'focus')
+      ]
     },
     {
       id: 2,
@@ -42,10 +66,17 @@ export const DEMO_SEED_DATA = {
       actualTime: 95,
       status: "completed",
       isInFocus: false,
+      scheduledFor: "this-week",
+      recurringPattern: null,
       userId: 1,
-      createdAt: new Date('2024-01-16'),
-      updatedAt: new Date('2024-01-18'),
-      completedAt: new Date('2024-01-18')
+      createdAt: daysAgo(6),
+      updatedAt: daysAgo(2),
+      completedAt: daysAgo(2),
+      timeEntries: [
+        createTimeEntry(2, new Date(daysAgo(6).setHours(10, 0, 0, 0)), 30, 'focus'),
+        createTimeEntry(2, new Date(daysAgo(4).setHours(15, 30, 0, 0)), 40, 'focus'),
+        createTimeEntry(2, new Date(daysAgo(2).setHours(11, 0, 0, 0)), 25, 'focus')
+      ]
     },
     {
       id: 3,
@@ -61,9 +92,14 @@ export const DEMO_SEED_DATA = {
       actualTime: 25,
       status: "active",
       isInFocus: false,
+      scheduledFor: "this-month",
+      recurringPattern: null,
       userId: 1,
-      createdAt: new Date('2024-01-17'),
-      updatedAt: new Date('2024-01-17')
+      createdAt: daysAgo(5),
+      updatedAt: daysAgo(4),
+      timeEntries: [
+        createTimeEntry(3, new Date(daysAgo(4).setHours(16, 0, 0, 0)), 25, 'regular')
+      ]
     },
     {
       id: 4,
@@ -79,10 +115,18 @@ export const DEMO_SEED_DATA = {
       actualTime: 82,
       status: "completed",
       isInFocus: false,
+      scheduledFor: "today",
+      recurringPattern: "daily",
+      lastCompletedDate: daysAgo(0),
+      streakCount: 5,
       userId: 1,
-      createdAt: new Date('2024-01-14'),
-      updatedAt: new Date('2024-01-18'),
-      completedAt: new Date('2024-01-18')
+      createdAt: daysAgo(10),
+      updatedAt: daysAgo(0),
+      completedAt: daysAgo(0),
+      timeEntries: [
+        createTimeEntry(4, new Date(daysAgo(3).setHours(9, 0, 0, 0)), 45, 'focus'),
+        createTimeEntry(4, new Date(daysAgo(1).setHours(14, 30, 0, 0)), 37, 'focus')
+      ]
     },
     {
       id: 5,
@@ -98,9 +142,12 @@ export const DEMO_SEED_DATA = {
       actualTime: 0,
       status: "active",
       isInFocus: false,
+      scheduledFor: "someday",
+      recurringPattern: null,
       userId: 1,
-      createdAt: new Date('2024-01-18'),
-      updatedAt: new Date('2024-01-18')
+      createdAt: daysAgo(4),
+      updatedAt: daysAgo(4),
+      timeEntries: []
     },
     {
       id: 6,
@@ -116,9 +163,12 @@ export const DEMO_SEED_DATA = {
       actualTime: 0,
       status: "archived",
       isInFocus: false,
+      scheduledFor: "someday",
+      recurringPattern: null,
       userId: 1,
-      createdAt: new Date('2024-01-19'),
-      updatedAt: new Date('2024-01-19')
+      createdAt: daysAgo(3),
+      updatedAt: daysAgo(3),
+      timeEntries: []
     },
     {
       id: 7,
@@ -134,9 +184,17 @@ export const DEMO_SEED_DATA = {
       actualTime: 75,
       status: "active",
       isInFocus: false,
+      scheduledFor: "this-week",
+      recurringPattern: "weekly",
+      lastCompletedDate: daysAgo(1),
+      streakCount: 2,
       userId: 1,
-      createdAt: new Date('2024-01-20'),
-      updatedAt: new Date('2024-01-20')
+      createdAt: daysAgo(8),
+      updatedAt: daysAgo(1),
+      timeEntries: [
+        createTimeEntry(7, new Date(daysAgo(6).setHours(13, 0, 0, 0)), 35, 'focus'),
+        createTimeEntry(7, new Date(daysAgo(1).setHours(15, 45, 0, 0)), 40, 'focus')
+      ]
     },
     {
       id: 8,
@@ -152,9 +210,15 @@ export const DEMO_SEED_DATA = {
       actualTime: 67,
       status: "active",
       isInFocus: false,
+      scheduledFor: "today",
+      recurringPattern: null,
       userId: 1,
-      createdAt: new Date('2024-01-21'),
-      updatedAt: new Date('2024-01-21')
+      createdAt: daysAgo(2),
+      updatedAt: daysAgo(0),
+      timeEntries: [
+        createTimeEntry(8, new Date(daysAgo(2).setHours(10, 30, 0, 0)), 50, 'focus'),
+        createTimeEntry(8, new Date(daysAgo(0).setHours(9, 15, 0, 0)), 17, 'regular')
+      ]
     },
     {
       id: 9,
@@ -167,12 +231,17 @@ export const DEMO_SEED_DATA = {
       timeBlock: "systematic",
       type: "revenue",
       estimatedTime: 300,
-      actualTime: 0,
+      actualTime: 5,
       status: "active",
       isInFocus: false,
+      scheduledFor: "this-month",
+      recurringPattern: null,
       userId: 1,
-      createdAt: new Date('2024-01-22'),
-      updatedAt: new Date('2024-01-22')
+      createdAt: daysAgo(1),
+      updatedAt: daysAgo(0),
+      timeEntries: [
+        createTimeEntry(9, new Date(daysAgo(0).setHours(16, 0, 0, 0)), 5, 'regular')
+      ]
     },
     {
       id: 10,
@@ -188,9 +257,17 @@ export const DEMO_SEED_DATA = {
       actualTime: 35,
       status: "active",
       isInFocus: false,
+      scheduledFor: "today",
+      recurringPattern: "daily",
+      lastCompletedDate: daysAgo(0),
+      streakCount: 7,
       userId: 1,
-      createdAt: new Date('2024-01-23'),
-      updatedAt: new Date('2024-01-23')
+      createdAt: daysAgo(9),
+      updatedAt: daysAgo(0),
+      timeEntries: [
+        createTimeEntry(10, new Date(daysAgo(5).setHours(18, 30, 0, 0)), 15, 'regular'),
+        createTimeEntry(10, new Date(daysAgo(0).setHours(12, 0, 0, 0)), 20, 'regular')
+      ]
     }
   ] as Task[],
 
@@ -205,7 +282,7 @@ export const DEMO_SEED_DATA = {
 }
 
 export const initializeDemoData = () => {
-  const currentVersion = '3.0.0' // Update this when data format changes (added time tracking fields)
+  const currentVersion = '3.2.0' // Update this when data format changes (added timeEntries + recent dates)
   const storedVersion = localStorage.getItem('demo-data-version')
 
   // Force reset if version changed or data format is incompatible
@@ -235,7 +312,7 @@ export const resetDemoData = () => {
   localStorage.setItem('demo-tasks', JSON.stringify(DEMO_SEED_DATA.tasks))
   localStorage.setItem('demo-preferences', JSON.stringify(DEMO_SEED_DATA.preferences))
   localStorage.setItem('demo-user', JSON.stringify(DEMO_SEED_DATA.user))
-  localStorage.setItem('demo-data-version', '3.0.0')
+  localStorage.setItem('demo-data-version', '3.2.0')
 }
 
 export const exportDemoData = () => {

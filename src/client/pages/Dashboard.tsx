@@ -1,17 +1,19 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, Clock, Archive, X, Play, Settings, Info, HelpCircle, Target, TrendingUp } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Search, CheckCircle, Clock, Archive, X, Play, Settings, Info, HelpCircle, Target, TrendingUp, BookOpen } from 'lucide-react';
 import { api } from '../lib/api';
 import { taskStorage } from '../../lib/storage';
 import { APP_CONFIG } from '../../utils/config';
 import { DemoNotice } from '../components/DemoNotice';
 import { FocusModeModal } from '../components/FocusModeModal';
+import { DurationSelectorModal } from '../components/DurationSelectorModal';
 import { ICEWeightsSettings } from '../components/ICEWeightsSettings';
 import { PomodoroSettingsComponent } from '../components/PomodoroSettings';
 import { QuickAddFAB } from '../components/QuickAddFAB';
 import { calculateICE, calculateWeightedICE, getDecisionInfo, getTimeBlockInfo, DEFAULT_ICE_WEIGHTS } from '../lib/helpers';
 import { getDecisionRecommendation } from '../../utils/algorithms';
 import { loadPomodoroSettings, savePomodoroSettings } from '../../utils/pomodoro';
+import { calculateRemaining, formatCountdown } from '../../utils/timer-modes';
 import type { Task, CreateTaskInput, User, OverviewStats, ICEWeights, SchedulingWindow, RecurringPattern, PomodoroSettings } from '../../utils/types';
 
 const Dashboard = () => {
@@ -48,6 +50,11 @@ const Dashboard = () => {
   // Focus mode state
   const [focusTask, setFocusTask] = useState<Task | null>(null);
   const [isFocusModeOpen, setIsFocusModeOpen] = useState(false);
+  const [floatingWidgetTime, setFloatingWidgetTime] = useState(0);
+
+  // Duration selector state
+  const [showDurationSelector, setShowDurationSelector] = useState(false);
+  const [selectedTaskForFocus, setSelectedTaskForFocus] = useState<Task | null>(null);
 
   // Celebration effect state
   const [showCelebration, setShowCelebration] = useState(false);
@@ -75,7 +82,7 @@ const Dashboard = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      
+
       if (APP_CONFIG.IS_DEMO) {
         // Use storage abstraction for demo mode
         const [userRes, tasksRes, statsRes] = await Promise.all([
@@ -86,6 +93,14 @@ const Dashboard = () => {
         setUser(userRes);
         setTasks(tasksRes);
         setStats(statsRes);
+
+        // Check for active focus session
+        const activeTask = tasksRes.find(t => t.isInFocus);
+        if (activeTask) {
+          setFocusTask(activeTask);
+          // Don't auto-open modal, just show the floating widget
+          setIsFocusModeOpen(false);
+        }
       } else {
         // Use API for production mode
         const [userRes, tasksRes, statsRes] = await Promise.all([
@@ -96,8 +111,16 @@ const Dashboard = () => {
         setUser(userRes);
         setTasks(tasksRes);
         setStats(statsRes);
+
+        // Check for active focus session
+        const activeTask = tasksRes.find(t => t.isInFocus);
+        if (activeTask) {
+          setFocusTask(activeTask);
+          // Don't auto-open modal, just show the floating widget
+          setIsFocusModeOpen(false);
+        }
       }
-      
+
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -181,9 +204,12 @@ const Dashboard = () => {
 
   const updateTask = async (id: number, field: string, value: any, skipLocalUpdate = false) => {
     try {
+      console.log('Updating task:', id, 'field:', field, 'value:', value);
       const updatedTask = APP_CONFIG.IS_DEMO
         ? await taskStorage.updateTask(id, { [field]: value })
         : await api.updateTask(id, { [field]: value });
+
+      console.log('Task updated successfully:', updatedTask);
 
       // Only update tasks state if we're not in the middle of debouncing the same field
       if (!skipLocalUpdate) {
@@ -200,6 +226,7 @@ const Dashboard = () => {
 
       return updatedTask;
     } catch (err) {
+      console.error('Failed to update task:', err);
       setError(err instanceof Error ? err.message : 'Failed to update task');
       throw err;
     }
@@ -267,14 +294,37 @@ const Dashboard = () => {
 
   // Focus mode functions
   const startFocusSession = async (task: Task) => {
+    // Show duration selector first
+    setSelectedTaskForFocus(task);
+    setShowDurationSelector(true);
+  };
+
+  const handleDurationSelected = async (duration: number | null) => {
+    setShowDurationSelector(false);
+    if (!selectedTaskForFocus) return;
+
     try {
-      const updatedTask = await taskStorage.startFocusSession(task.id);
-      setTasks(tasks.map(t => t.id === task.id ? updatedTask : t));
-      setFocusTask(updatedTask);
+      const updatedTask = await taskStorage.startFocusSession(selectedTaskForFocus.id);
+
+      // Save target duration to database if provided
+      if (duration !== null) {
+        const taskWithDuration = await taskStorage.updateTask(updatedTask.id, { targetDuration: duration });
+        setTasks(tasks.map(t => t.id === selectedTaskForFocus.id ? taskWithDuration : t));
+        setFocusTask(taskWithDuration);
+      } else {
+        setTasks(tasks.map(t => t.id === selectedTaskForFocus.id ? updatedTask : t));
+        setFocusTask(updatedTask);
+      }
+
       setIsFocusModeOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start focus session');
     }
+  };
+
+  const handleDurationSelectorClose = () => {
+    setShowDurationSelector(false);
+    setSelectedTaskForFocus(null);
   };
 
   const endFocusSession = async (duration: number) => {
@@ -298,7 +348,37 @@ const Dashboard = () => {
 
   const closeFocusMode = () => {
     setIsFocusModeOpen(false);
-    setFocusTask(null);
+    // Keep focusTask - don't set it to null so timer keeps running in background
+  };
+
+  const reopenFocusMode = () => {
+    setIsFocusModeOpen(true);
+  };
+
+  // Update floating widget timer
+  useEffect(() => {
+    if (!focusTask || isFocusModeOpen || !focusTask.focusStartedAt) return;
+
+    const interval = setInterval(() => {
+      const startTime = new Date(focusTask.focusStartedAt!);
+      const pausedTime = focusTask.pausedTime || 0;
+      const elapsed = Math.floor((Date.now() - startTime.getTime()) / 1000) - pausedTime;
+      setFloatingWidgetTime(elapsed);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [focusTask, isFocusModeOpen]);
+
+  // Format time for display (HH:MM:SS or MM:SS)
+  const formatTime = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   // Search and filter tasks
@@ -503,6 +583,13 @@ const Dashboard = () => {
             >
               <TrendingUp size={18} />
               <span className="hidden sm:inline">Reports</span>
+            </Link>
+            <Link
+              to="/notes"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <BookOpen size={18} />
+              <span className="hidden sm:inline">Notes</span>
             </Link>
             <button
               onClick={() => setShowPomodoroSettings(true)}
@@ -1280,6 +1367,51 @@ const Dashboard = () => {
                               )}
                             </div>
 
+                            {/* Scheduling */}
+                            <div className="space-y-4">
+                              <h4 className="font-semibold text-gray-800 mb-3">📅 Scheduling</h4>
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Schedule For</label>
+                                  <select
+                                    value={task.scheduledFor || 'someday'}
+                                    onChange={(e) => updateTask(task.id, 'scheduledFor', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="today">📅 Today</option>
+                                    <option value="this-week">📆 This Week</option>
+                                    <option value="this-month">🗓️ This Month</option>
+                                    <option value="someday">💭 Someday</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Recurring Pattern</label>
+                                  <select
+                                    value={task.recurringPattern || ''}
+                                    onChange={(e) => updateTask(task.id, 'recurringPattern', e.target.value || null)}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="">None</option>
+                                    <option value="daily">🔄 Daily</option>
+                                    <option value="weekly">📅 Weekly</option>
+                                    <option value="monthly">🗓️ Monthly</option>
+                                  </select>
+                                </div>
+                                {task.recurringPattern && task.streakCount !== undefined && (
+                                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                                    <p className="text-xs text-purple-700 font-medium">
+                                      🔥 Streak: {task.streakCount} {task.recurringPattern === 'daily' ? 'days' : task.recurringPattern === 'weekly' ? 'weeks' : 'months'}
+                                    </p>
+                                    {task.lastCompletedDate && (
+                                      <p className="text-xs text-purple-600 mt-1">
+                                        Last completed: {new Date(task.lastCompletedDate).toLocaleDateString()}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
                             {/* Description */}
                             <div className="space-y-4">
                               <h4 className="font-semibold text-gray-800 mb-3">📝 Description</h4>
@@ -1456,6 +1588,16 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Duration Selector Modal */}
+      {selectedTaskForFocus && (
+        <DurationSelectorModal
+          task={selectedTaskForFocus}
+          isOpen={showDurationSelector}
+          onClose={handleDurationSelectorClose}
+          onSelect={handleDurationSelected}
+        />
+      )}
+
       {/* Focus Mode Modal */}
       {focusTask && (
         <FocusModeModal
@@ -1463,7 +1605,47 @@ const Dashboard = () => {
           isOpen={isFocusModeOpen}
           onClose={closeFocusMode}
           onComplete={endFocusSession}
+          targetDuration={focusTask.targetDuration ?? null}
         />
+      )}
+
+      {/* Floating Timer Widget - Shows when modal is closed but task is in focus */}
+      {focusTask && !isFocusModeOpen && (
+        <div
+          onClick={reopenFocusMode}
+          className="fixed bottom-24 right-6 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl shadow-2xl px-5 py-3 cursor-pointer hover:scale-105 transition-transform duration-200 z-40 flex items-center gap-4"
+        >
+          <Clock size={20} className="flex-shrink-0" />
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-medium opacity-90">In Progress</span>
+            <span className="text-sm font-bold truncate max-w-[180px]">{focusTask.name}</span>
+          </div>
+          <div className="flex flex-col items-end flex-shrink-0">
+            {focusTask.targetDuration ? (
+              <>
+                <span className="text-2xl font-mono font-bold tabular-nums">
+                  {formatCountdown(calculateRemaining(
+                    new Date(focusTask.focusStartedAt!),
+                    focusTask.targetDuration,
+                    focusTask.pausedTime || 0
+                  ))}
+                </span>
+                <span className="text-[10px] opacity-75">
+                  {calculateRemaining(
+                    new Date(focusTask.focusStartedAt!),
+                    focusTask.targetDuration,
+                    focusTask.pausedTime || 0
+                  ) <= 0 ? 'overtime' : 'remaining'}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-2xl font-mono font-bold tabular-nums">{formatTime(floatingWidgetTime)}</span>
+                <span className="text-[10px] opacity-75">click to expand</span>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ICE Weights Settings Modal */}
@@ -1486,19 +1668,21 @@ const Dashboard = () => {
         }}
       />
 
-      {/* Quick Add FAB */}
-      <QuickAddFAB
-        onAdd={async (task) => {
-          await addTask(task);
-        }}
-        onShowFullForm={() => {
-          // Scroll to the add task form
-          const addTaskForm = document.querySelector('[data-add-task-form]');
-          if (addTaskForm) {
-            addTaskForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        }}
-      />
+      {/* Quick Add FAB - Hide when focus mode is open */}
+      {!isFocusModeOpen && (
+        <QuickAddFAB
+          onAdd={async (task) => {
+            await addTask(task);
+          }}
+          onShowFullForm={() => {
+            // Scroll to the add task form
+            const addTaskForm = document.querySelector('[data-add-task-form]');
+            if (addTaskForm) {
+              addTaskForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }}
+        />
+      )}
 
       {/* Celebration Effect */}
       {showCelebration && (

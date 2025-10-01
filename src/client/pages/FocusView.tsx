@@ -188,9 +188,9 @@ const FocusView = () => {
             </div>
             {capacity && activeTab === 'today' && (
               <div className="bg-white rounded-lg p-3 border">
-                <div className="text-xs text-gray-500 mb-1">Available</div>
+                <div className="text-xs text-gray-500 mb-1">Remaining</div>
                 <div className="text-2xl font-bold text-purple-600">
-                  {formatMinutes(capacity.availableMinutes)}
+                  {formatMinutes(capacity.remainingMinutes)}
                 </div>
               </div>
             )}
@@ -199,14 +199,14 @@ const FocusView = () => {
       </div>
 
       {/* Capacity Warning (Today only) */}
-      {capacity && activeTab === 'today' && capacity.availableMinutes < 0 && (
+      {capacity && activeTab === 'today' && capacity.remainingMinutes < 0 && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-lg">
           <div className="flex items-center gap-2">
             <span className="text-2xl">⚠️</span>
             <div>
               <p className="font-semibold text-yellow-800">Overcommitted!</p>
               <p className="text-sm text-yellow-700">
-                You have {formatMinutes(Math.abs(capacity.availableMinutes))} more work than time available today.
+                You have {formatMinutes(Math.abs(capacity.remainingMinutes))} more work than time available today.
                 Consider moving some tasks to later.
               </p>
             </div>

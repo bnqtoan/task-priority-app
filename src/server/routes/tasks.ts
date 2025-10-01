@@ -3,7 +3,7 @@ import { eq, and } from 'drizzle-orm';
 import { zValidator } from '@hono/zod-validator';
 import { createDB, type Env } from '../lib/db';
 import { accessMiddleware, type AccessUser } from '../middleware/access';
-import { tasks } from '../../db/schema';
+import { tasks, timeEntries } from '../../db/schema';
 import { createTaskSchema, updateTaskSchema, taskQuerySchema } from '../../utils/validation';
 
 type Variables = {
@@ -47,7 +47,28 @@ tasksRouter.get('/', zValidator('query', taskQuerySchema), async (c) => {
       .limit(limit)
       .all();
 
-    return c.json({ tasks: userTasks });
+    // Fetch time entries for all tasks
+    const taskIds = userTasks.map(t => t.id);
+    const entries = taskIds.length > 0
+      ? await db.select().from(timeEntries)
+          .where(eq(timeEntries.userId, user.id))
+          .all()
+      : [];
+
+    // Group time entries by task
+    const entriesByTask = entries.reduce((acc, entry) => {
+      if (!acc[entry.taskId]) acc[entry.taskId] = [];
+      acc[entry.taskId].push(entry);
+      return acc;
+    }, {} as Record<number, typeof entries>);
+
+    // Attach time entries to tasks
+    const tasksWithEntries = userTasks.map(task => ({
+      ...task,
+      timeEntries: entriesByTask[task.id] || []
+    }));
+
+    return c.json({ tasks: tasksWithEntries });
   } catch (error) {
     console.error('Get tasks error:', error);
     return c.json({ error: 'Failed to fetch tasks' }, 500);
@@ -158,9 +179,21 @@ tasksRouter.put('/:id', zValidator('json', updateTaskSchema), async (c) => {
   }
 
   try {
+    // Convert string dates to Date objects if present
+    const sanitizedData: any = { ...updateData };
+    if (sanitizedData.lastCompletedDate && typeof sanitizedData.lastCompletedDate === 'string') {
+      sanitizedData.lastCompletedDate = new Date(sanitizedData.lastCompletedDate);
+    }
+    if (sanitizedData.focusStartedAt && typeof sanitizedData.focusStartedAt === 'string') {
+      sanitizedData.focusStartedAt = new Date(sanitizedData.focusStartedAt);
+    }
+    if (sanitizedData.pauseStartTime && typeof sanitizedData.pauseStartTime === 'string') {
+      sanitizedData.pauseStartTime = new Date(sanitizedData.pauseStartTime);
+    }
+
     const [updatedTask] = await db.update(tasks)
       .set({
-        ...updateData,
+        ...sanitizedData,
         updatedAt: new Date(),
       })
       .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
@@ -264,12 +297,12 @@ tasksRouter.patch('/:id/complete', async (c) => {
 tasksRouter.patch('/:id/focus/start', async (c) => {
   // For demo mode, return a mock response since data is in localStorage
   if (c.env.NODE_ENV === 'demo') {
-    return c.json({ 
-      task: { 
-        id: parseInt(c.req.param('id')), 
-        isInFocus: true, 
-        focusStartedAt: new Date() 
-      } 
+    return c.json({
+      task: {
+        id: parseInt(c.req.param('id')),
+        isInFocus: true,
+        focusStartedAt: new Date()
+      }
     });
   }
 
@@ -282,6 +315,34 @@ tasksRouter.patch('/:id/focus/start', async (c) => {
   }
 
   try {
+    // First, find and stop any other active focus sessions
+    const activeFocusTasks = await db.select()
+      .from(tasks)
+      .where(and(
+        eq(tasks.userId, user.id),
+        eq(tasks.isInFocus, true)
+      ))
+      .all();
+
+    // End each active session (except the one we're starting)
+    for (const task of activeFocusTasks) {
+      if (task.id !== id && task.focusStartedAt) {
+        const elapsed = Math.floor((new Date().getTime() - new Date(task.focusStartedAt).getTime()) / 1000);
+        const durationMinutes = Math.ceil(elapsed / 60);
+
+        await db.update(tasks)
+          .set({
+            isInFocus: false,
+            focusStartedAt: null,
+            actualTime: (task.actualTime || 0) + durationMinutes,
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, task.id))
+          .execute();
+      }
+    }
+
+    // Now start the new focus session
     const [updatedTask] = await db.update(tasks)
       .set({
         isInFocus: true,

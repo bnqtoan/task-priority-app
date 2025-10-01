@@ -40,6 +40,10 @@ export const tasks = sqliteTable('tasks', {
   actualTime: integer('actual_time').default(0), // total time spent in minutes
   isInFocus: integer('is_in_focus', { mode: 'boolean' }).default(false), // currently in focus mode
   focusStartedAt: integer('focus_started_at', { mode: 'timestamp' }), // when current focus session started
+  targetDuration: integer('target_duration'), // countdown timer target in minutes
+  isPaused: integer('is_paused', { mode: 'boolean' }).default(false), // whether timer is currently paused
+  pausedTime: integer('paused_time').default(0), // accumulated pause time in seconds
+  pauseStartTime: integer('pause_start_time', { mode: 'timestamp' }), // when current pause started
 
   // Scheduling fields
   scheduledFor: text('scheduled_for'), // 'today' | 'this-week' | 'this-month' | 'someday'
@@ -89,6 +93,28 @@ export const userPreferences = sqliteTable('user_preferences', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 
+// Notes Table - For rich markdown notes
+export const notes = sqliteTable('notes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  taskId: integer('task_id').references(() => tasks.id, { onDelete: 'cascade' }), // nullable - can be standalone
+
+  // Content
+  title: text('title').notNull(),
+  content: text('content').notNull(), // markdown format
+
+  // Categorization
+  category: text('category').notNull().default('task-note'), // 'daily-log' | 'task-note' | 'reflection' | 'idea' | 'meeting'
+  tags: text('tags'), // JSON array of strings
+
+  // AI-ready metadata
+  metadata: text('metadata'), // JSON: { mood?, energy?, location?, context? }
+
+  // Timestamps
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
 // Type definitions
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -98,3 +124,5 @@ export type TimeEntry = typeof timeEntries.$inferSelect;
 export type NewTimeEntry = typeof timeEntries.$inferInsert;
 export type UserPreferences = typeof userPreferences.$inferSelect;
 export type NewUserPreferences = typeof userPreferences.$inferInsert;
+export type Note = typeof notes.$inferSelect;
+export type NewNote = typeof notes.$inferInsert;

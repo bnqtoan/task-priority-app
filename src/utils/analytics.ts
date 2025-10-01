@@ -114,14 +114,32 @@ export function getTimeEntriesForDateRange(tasks: Task[], dateRange: DateRange):
   const allEntries: TimeEntry[] = [];
 
   tasks.forEach(task => {
-    if (!task.timeEntries) return;
+    // If task has time entries, use them
+    if (task.timeEntries && task.timeEntries.length > 0) {
+      const filteredEntries = task.timeEntries.filter(entry => {
+        const entryDate = new Date(entry.startTime);
+        return entryDate >= dateRange.start && entryDate <= dateRange.end;
+      });
+      allEntries.push(...filteredEntries);
+    }
+    // Fallback: If task has actualTime but no timeEntries, create a synthetic entry
+    else if (task.actualTime && task.actualTime > 0) {
+      // Use task's updatedAt or createdAt as the entry date
+      const entryDate = task.updatedAt || task.createdAt || new Date();
+      const entryDateObj = new Date(entryDate);
 
-    const filteredEntries = task.timeEntries.filter(entry => {
-      const entryDate = new Date(entry.startTime);
-      return entryDate >= dateRange.start && entryDate <= dateRange.end;
-    });
-
-    allEntries.push(...filteredEntries);
+      // Only include if within date range
+      if (entryDateObj >= dateRange.start && entryDateObj <= dateRange.end) {
+        allEntries.push({
+          id: `synthetic-${task.id}`,
+          taskId: task.id,
+          startTime: entryDateObj,
+          endTime: new Date(entryDateObj.getTime() + task.actualTime * 60000),
+          duration: task.actualTime,
+          type: 'regular'
+        });
+      }
+    }
   });
 
   return allEntries;
@@ -403,4 +421,186 @@ export function formatDuration(minutes: number): string {
  */
 export function formatPercentage(value: number): string {
   return `${Math.round(value)}%`;
+}
+
+/**
+ * Generate end-of-day insights for daily reflection
+ */
+export function generateEndOfDayInsights(
+  tasks: Task[],
+  date: Date = new Date()
+): import('./types').EndOfDayInsights {
+  const today = new Date(date);
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const dateRange: import('./types').DateRange = { start: today, end: tomorrow, preset: 'today' };
+
+  // Get time entries for today
+  const todayEntries = getTimeEntriesForDateRange(tasks, dateRange);
+
+  // Calculate neglected high-priority tasks (ICE > 7, worked < 15 mins today)
+  const neglectedPriorities: import('./types').NeglectedTask[] = tasks
+    .filter(t => t.status === 'active')
+    .map(task => {
+      const iceScore = calculateICEScore(task.impact, task.confidence, task.ease);
+      const taskEntries = todayEntries.filter(e => e.taskId === task.id);
+      const minutesToday = taskEntries.reduce((sum, e) => sum + (e.duration || 0), 0);
+
+      return { task, iceScore, minutesToday };
+    })
+    .filter(({ iceScore, minutesToday }) => iceScore > 7 && minutesToday < 15)
+    .sort((a, b) => b.iceScore - a.iceScore)
+    .slice(0, 5)
+    .map(({ task, iceScore, minutesToday }) => ({
+      task,
+      iceScore,
+      minutesToday,
+      reason: minutesToday === 0
+        ? 'Not started today despite high priority'
+        : `Only ${minutesToday} minutes invested today`
+    }));
+
+  // Completion momentum
+  const completedToday = tasks.filter(t => {
+    if (!t.completedAt) return false;
+    const completedDate = new Date(t.completedAt);
+    return completedDate >= today && completedDate < tomorrow;
+  });
+
+  const startedToday = tasks.filter(t => {
+    const createdDate = new Date(t.createdAt);
+    return createdDate >= today && createdDate < tomorrow;
+  });
+
+  const topCompletions = completedToday
+    .map(task => ({
+      id: task.id,
+      name: task.name,
+      minutes: task.actualTime || 0,
+      percentage: 0, // Will be calculated if needed
+      type: task.type,
+      iceScore: calculateICEScore(task.impact, task.confidence, task.ease)
+    }))
+    .sort((a, b) => b.iceScore - a.iceScore)
+    .slice(0, 3);
+
+  // Time distribution analysis
+  const plannedByType: { [key: string]: number } = {};
+  const actualByType: { [key: string]: number } = {};
+
+  tasks.filter(t => t.status !== 'archived').forEach(task => {
+    plannedByType[task.type] = (plannedByType[task.type] || 0) + (task.estimatedTime || 0);
+  });
+
+  todayEntries.forEach(entry => {
+    const task = tasks.find(t => t.id === entry.taskId);
+    if (task) {
+      actualByType[task.type] = (actualByType[task.type] || 0) + (entry.duration || 0);
+    }
+  });
+
+  const variance: { [key: string]: number } = {};
+  Object.keys({ ...plannedByType, ...actualByType }).forEach(type => {
+    const planned = plannedByType[type] || 0;
+    const actual = actualByType[type] || 0;
+    variance[type] = planned > 0 ? ((actual - planned) / planned) * 100 : 0;
+  });
+
+  // Energy alignment (peak hours 9-12, 14-16)
+  const peakHours = [9, 10, 11, 14, 15, 16];
+  const deepWorkEntries = todayEntries.filter(e => {
+    const task = tasks.find(t => t.id === e.taskId);
+    return task?.timeBlock === 'deep';
+  });
+
+  const deepWorkDuringPeak = deepWorkEntries
+    .filter(e => {
+      const hour = new Date(e.startTime).getHours();
+      return peakHours.includes(hour);
+    })
+    .reduce((sum, e) => sum + (e.duration || 0), 0);
+
+  const deepWorkOffPeak = deepWorkEntries
+    .reduce((sum, e) => sum + (e.duration || 0), 0) - deepWorkDuringPeak;
+
+  const totalDeepWork = deepWorkDuringPeak + deepWorkOffPeak;
+  const alignmentScore = totalDeepWork > 0
+    ? Math.round((deepWorkDuringPeak / totalDeepWork) * 100)
+    : 50;
+
+  const recommendation = alignmentScore < 50
+    ? 'Try scheduling deep work during peak energy hours (9-12am, 2-4pm)'
+    : alignmentScore < 70
+    ? 'Good alignment! Consider blocking more peak hours for deep work'
+    : 'Excellent! Your deep work is well-aligned with peak energy hours';
+
+  // Focus quality
+  const focusEntries = todayEntries.filter(e => e.type === 'focus');
+  const totalSessions = focusEntries.length;
+  const averageSessionMinutes = totalSessions > 0
+    ? focusEntries.reduce((sum, e) => sum + (e.duration || 0), 0) / totalSessions
+    : 0;
+  const longestSession = totalSessions > 0
+    ? Math.max(...focusEntries.map(e => e.duration || 0))
+    : 0;
+
+  // Estimate interruptions (sessions < 10 mins)
+  const interruptionCount = focusEntries.filter(e => (e.duration || 0) < 10).length;
+
+  // Tomorrow's recommendations (top 3 active tasks by ICE score with <50% time completion)
+  const tomorrowRecommendations: import('./types').TaskScheduleSuggestion[] = tasks
+    .filter(t => t.status === 'active')
+    .map(task => ({
+      task,
+      iceScore: calculateICEScore(task.impact, task.confidence, task.ease),
+      timeProgress: task.estimatedTime > 0 ? (task.actualTime || 0) / task.estimatedTime : 0
+    }))
+    .filter(({ timeProgress }) => timeProgress < 0.5)
+    .sort((a, b) => b.iceScore - a.iceScore)
+    .slice(0, 3)
+    .map(({ task }) => ({
+      task,
+      reason: `High ICE score (${calculateICEScore(task.impact, task.confidence, task.ease).toFixed(1)}) with progress to make`,
+      suggestedTimeBlock: task.timeBlock,
+      priority: 'high' as const
+    }));
+
+  // Wins (completed tasks descriptions)
+  const wins = completedToday.map(t => `✅ ${t.name}`);
+  if (wins.length === 0) {
+    wins.push('Focus on progress, not perfection. Every small step counts!');
+  }
+
+  return {
+    date: today,
+    neglectedPriorities,
+    completionMomentum: {
+      completed: completedToday.length,
+      started: startedToday.length,
+      completionRate: startedToday.length > 0 ? completedToday.length / startedToday.length : 0,
+      topCompletions
+    },
+    timeDistribution: {
+      planned: plannedByType,
+      actual: actualByType,
+      variance
+    },
+    energyAlignment: {
+      peakHours,
+      deepWorkDuringPeak,
+      deepWorkOffPeak,
+      alignmentScore,
+      recommendation
+    },
+    focusQuality: {
+      averageSessionMinutes,
+      totalSessions,
+      longestSession,
+      interruptionCount
+    },
+    tomorrowRecommendations,
+    wins
+  };
 }

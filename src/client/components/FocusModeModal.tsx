@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CompactFocusMode } from './CompactFocusMode';
-import { Task, FocusQuote, PomodoroSettings, PomodoroState } from '../../utils/types';
+import { Task, FocusQuote, PomodoroSettings, PomodoroState, TimerMode } from '../../utils/types';
 import { getRandomFocusQuote } from '../../utils/focus-quotes';
 import {
   loadPomodoroSettings,
@@ -11,6 +11,13 @@ import {
   playPomodoroSound,
   showPomodoroNotification
 } from '../../utils/pomodoro';
+import {
+  formatCountdown,
+  formatElapsed,
+  calculateRemaining,
+  isCountdownComplete,
+  getCountdownCompletionMessage
+} from '../../utils/timer-modes';
 
 interface FocusModeModalProps {
   task: Task;
@@ -18,15 +25,26 @@ interface FocusModeModalProps {
   onClose: () => void;
   onComplete: (duration: number) => void;
   usePomodoroMode?: boolean;
+  targetDuration?: number | null; // countdown target in minutes
 }
 
-export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroMode = false }: FocusModeModalProps) {
-  const [startTime] = useState(new Date());
+export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroMode = false, targetDuration = null }: FocusModeModalProps) {
+  // Use existing focusStartedAt if available, otherwise create new start time
+  const [startTime] = useState(() => {
+    return task.focusStartedAt ? new Date(task.focusStartedAt) : new Date();
+  });
   const [elapsedTime, setElapsedTime] = useState(0);
   const [quote] = useState<FocusQuote>(getRandomFocusQuote());
-  const [isPaused, setIsPaused] = useState(false);
-  const [pausedTime, setPausedTime] = useState(0);
-  const [pauseStartTime, setPauseStartTime] = useState<Date | null>(null);
+  const [isPaused, setIsPaused] = useState(task.isPaused || false);
+  const [pausedTime, setPausedTime] = useState(task.pausedTime || 0);
+  const [pauseStartTime, setPauseStartTime] = useState<Date | null>(
+    task.pauseStartTime ? new Date(task.pauseStartTime) : null
+  );
+
+  // Countdown timer state
+  const [timerMode] = useState<TimerMode>(targetDuration !== null ? 'countdown' : 'countup');
+  const [countdownCompleted, setCountdownCompleted] = useState(false);
+  const [showCompletionNotification, setShowCompletionNotification] = useState(false);
 
   // View mode state
   const [isCompactMode, setIsCompactMode] = useState(() => {
@@ -62,6 +80,14 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
       const elapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000) - pausedTime;
       setElapsedTime(elapsed);
 
+      // Check if countdown is complete
+      if (timerMode === 'countdown' && targetDuration && !countdownCompleted) {
+        const remaining = calculateRemaining(startTime, targetDuration, pausedTime);
+        if (isCountdownComplete(remaining)) {
+          handleCountdownComplete();
+        }
+      }
+
       // Check if Pomodoro session is complete
       if (pomodoroState.isEnabled) {
         const targetDuration = getPomodoroModeDuration(pomodoroState.currentMode, pomodoroSettings) * 60;
@@ -72,7 +98,7 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isOpen, startTime, isPaused, pausedTime, pomodoroState]);
+  }, [isOpen, startTime, isPaused, pausedTime, pomodoroState, timerMode, targetDuration, countdownCompleted]);
 
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -85,23 +111,55 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handlePause = () => {
+  const handlePause = async () => {
+    let newPausedTime = pausedTime;
+    let newPauseStartTime: Date | null = null;
+    let newIsPaused = !isPaused;
+
     if (isPaused) {
+      // Resuming
       if (pauseStartTime) {
         const pauseDuration = Math.floor((new Date().getTime() - pauseStartTime.getTime()) / 1000);
-        setPausedTime(prev => prev + pauseDuration);
+        newPausedTime = pausedTime + pauseDuration;
+        setPausedTime(newPausedTime);
         setPauseStartTime(null);
       }
     } else {
-      setPauseStartTime(new Date());
+      // Pausing
+      newPauseStartTime = new Date();
+      setPauseStartTime(newPauseStartTime);
     }
-    setIsPaused(!isPaused);
+
+    setIsPaused(newIsPaused);
+
+    // Persist pause state to database
+    try {
+      const { taskStorage } = await import('../../lib/storage');
+      await taskStorage.updatePauseState(task.id, newIsPaused, newPausedTime, newPauseStartTime);
+    } catch (error) {
+      console.error('Failed to persist pause state:', error);
+    }
   };
 
   const handleComplete = () => {
     const totalMinutes = Math.ceil(elapsedTime / 60);
     onComplete(totalMinutes);
     onClose();
+  };
+
+  const handleCountdownComplete = () => {
+    setCountdownCompleted(true);
+    setShowCompletionNotification(true);
+
+    // Play sound and show notification
+    playPomodoroSound(); // Reuse Pomodoro sound
+    const message = getCountdownCompletionMessage(targetDuration || 0);
+    showPomodoroNotification('Timer Complete!', message);
+  };
+
+  const handleContinueWorking = () => {
+    setShowCompletionNotification(false);
+    // Timer continues tracking in background
   };
 
   const handlePomodoroComplete = () => {
@@ -176,6 +234,11 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
           isPaused={isPaused}
           pomodoroState={pomodoroState.isEnabled ? pomodoroState : undefined}
           pomodoroSettings={pomodoroState.isEnabled ? pomodoroSettings : undefined}
+          timerMode={timerMode}
+          targetDuration={targetDuration}
+          countdownCompleted={countdownCompleted}
+          startTime={startTime}
+          pausedTime={pausedTime}
           onPause={handlePause}
           onComplete={handleComplete}
           onClose={onClose}
@@ -235,12 +298,33 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
 
         {/* Timer */}
         <div className="mb-12">
-          <div className="text-6xl md:text-8xl font-mono font-bold mb-4 text-white">
-            {formatTime(elapsedTime)}
-          </div>
-          <div className="text-lg text-blue-200">
-            {isPaused ? 'Paused' : pomodoroState.isEnabled ? modeInfo?.description : 'Focus Time'}
-          </div>
+          {timerMode === 'countdown' && targetDuration ? (
+            <>
+              {/* Countdown display */}
+              <div className="mb-2">
+                <div className="text-6xl md:text-8xl font-mono font-bold mb-2 text-white">
+                  {formatCountdown(calculateRemaining(startTime, targetDuration, pausedTime))}
+                </div>
+                <div className="text-2xl text-blue-200">
+                  {countdownCompleted ? 'Overtime' : 'Remaining'}
+                </div>
+              </div>
+              {/* Elapsed time (smaller) */}
+              <div className="text-lg text-blue-300 opacity-75">
+                ⏱️ Elapsed: {formatElapsed(elapsedTime)}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Count-up display */}
+              <div className="text-6xl md:text-8xl font-mono font-bold mb-4 text-white">
+                {formatTime(elapsedTime)}
+              </div>
+              <div className="text-lg text-blue-200">
+                {isPaused ? 'Paused' : pomodoroState.isEnabled ? modeInfo?.description : 'Focus Time'}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Quote */}
@@ -306,6 +390,36 @@ export function FocusModeModal({ task, isOpen, onClose, onComplete, usePomodoroM
           </div>
         )}
       </div>
+
+      {/* Countdown completion notification */}
+      {showCompletionNotification && (
+        <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-20">
+          <div className="bg-white rounded-2xl p-8 max-w-md text-center shadow-2xl">
+            <div className="text-6xl mb-4">🎉</div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">Timer Complete!</h3>
+            <p className="text-gray-700 mb-2">
+              {getCountdownCompletionMessage(targetDuration || 0)}
+            </p>
+            <p className="text-sm text-gray-600 mb-6">
+              Total time worked: {formatElapsed(elapsedTime)}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleContinueWorking}
+                className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+              >
+                Keep Working
+              </button>
+              <button
+                onClick={handleComplete}
+                className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition"
+              >
+                Complete Task
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Ambient particles animation */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">

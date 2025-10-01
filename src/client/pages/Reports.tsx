@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Calendar, TrendingUp, Clock, Target, Award, ChevronDown, Home } from 'lucide-react';
-import type { Task, DateRange, TimeRangePreset, ReportData } from '../../utils/types';
+import { Calendar, TrendingUp, Clock, Target, Award, ChevronDown, Home, AlertCircle, CheckCircle, Zap, ChevronRight } from 'lucide-react';
+import type { Task, DateRange, TimeRangePreset, ReportData, EndOfDayInsights } from '../../utils/types';
 import { taskStorage } from '../../lib/storage';
 import {
   getDateRangeForPreset,
   generateReportData,
+  generateEndOfDayInsights,
   formatDuration,
   formatPercentage
 } from '../../utils/analytics';
@@ -32,9 +33,11 @@ export function Reports() {
   const [selectedPreset, setSelectedPreset] = useState<TimeRangePreset>('week');
   const [dateRange, setDateRange] = useState<DateRange>(getDateRangeForPreset('week'));
   const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [endOfDayInsights, setEndOfDayInsights] = useState<EndOfDayInsights | null>(null);
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showInsights, setShowInsights] = useState(true);
 
   // Load tasks
   useEffect(() => {
@@ -62,7 +65,15 @@ export function Reports() {
   useEffect(() => {
     const data = generateReportData(tasks, dateRange);
     setReportData(data);
-  }, [tasks, dateRange]);
+
+    // Generate end-of-day insights only for "today" view
+    if (selectedPreset === 'today') {
+      const insights = generateEndOfDayInsights(tasks);
+      setEndOfDayInsights(insights);
+    } else {
+      setEndOfDayInsights(null);
+    }
+  }, [tasks, dateRange, selectedPreset]);
 
   const handlePresetChange = (preset: TimeRangePreset) => {
     setSelectedPreset(preset);
@@ -177,6 +188,183 @@ export function Reports() {
           {dateRange.start.toLocaleDateString()} - {dateRange.end.toLocaleDateString()}
         </div>
       </div>
+
+      {/* End-of-Day Insights (only show for "today" view) */}
+      {endOfDayInsights && showInsights && (
+        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg shadow-sm border border-indigo-200 p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <Zap className="text-indigo-600" size={24} />
+              Daily Reflection & Insights
+            </h2>
+            <button
+              onClick={() => setShowInsights(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <ChevronDown size={20} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            {/* Neglected Priorities */}
+            {endOfDayInsights.neglectedPriorities.length > 0 && (
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <AlertCircle className="text-orange-600" size={18} />
+                  High-Priority Tasks Needing Attention
+                </h3>
+                <div className="space-y-2">
+                  {endOfDayInsights.neglectedPriorities.map(({ task, iceScore, minutesToday, reason }) => (
+                    <div key={task.id} className="border-l-4 border-orange-400 pl-3 py-2 bg-orange-50 rounded">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900 text-sm">{task.name}</div>
+                          <div className="text-xs text-gray-600 mt-1">{reason}</div>
+                        </div>
+                        <div className="text-right ml-2">
+                          <div className="text-xs font-semibold text-orange-700">ICE: {iceScore.toFixed(1)}</div>
+                          <div className="text-xs text-gray-500">{minutesToday}m today</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Completion Momentum */}
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <CheckCircle className="text-green-600" size={18} />
+                Today's Momentum
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Tasks Completed</span>
+                  <span className="text-2xl font-bold text-green-600">{endOfDayInsights.completionMomentum.completed}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Tasks Started</span>
+                  <span className="text-lg font-semibold text-gray-700">{endOfDayInsights.completionMomentum.started}</span>
+                </div>
+                {endOfDayInsights.completionMomentum.topCompletions.length > 0 && (
+                  <div className="mt-3 pt-3 border-t">
+                    <div className="text-xs text-gray-500 mb-2">Top Completions:</div>
+                    {endOfDayInsights.completionMomentum.topCompletions.map(task => (
+                      <div key={task.id} className="text-sm text-gray-700 py-1">
+                        ✓ {task.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Focus Quality */}
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Target className="text-purple-600" size={18} />
+                Focus Quality
+              </h3>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Sessions Today</span>
+                  <span className="font-semibold text-gray-900">{endOfDayInsights.focusQuality.totalSessions}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Avg Session</span>
+                  <span className="font-semibold text-gray-900">{formatDuration(endOfDayInsights.focusQuality.averageSessionMinutes)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Longest Session</span>
+                  <span className="font-semibold text-gray-900">{formatDuration(endOfDayInsights.focusQuality.longestSession)}</span>
+                </div>
+                {endOfDayInsights.focusQuality.interruptionCount > 0 && (
+                  <div className="mt-2 text-xs text-orange-600">
+                    ⚠️ {endOfDayInsights.focusQuality.interruptionCount} short session(s) {'<'}10 mins
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Energy Alignment */}
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Zap className="text-yellow-600" size={18} />
+                Energy Alignment
+              </h3>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-gray-600">Alignment Score</span>
+                    <span className="text-sm font-bold text-gray-900">{endOfDayInsights.energyAlignment.alignmentScore}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${
+                        endOfDayInsights.energyAlignment.alignmentScore >= 70
+                          ? 'bg-green-500'
+                          : endOfDayInsights.energyAlignment.alignmentScore >= 50
+                          ? 'bg-yellow-500'
+                          : 'bg-orange-500'
+                      }`}
+                      style={{ width: `${endOfDayInsights.energyAlignment.alignmentScore}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
+                  {endOfDayInsights.energyAlignment.recommendation}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <div className="text-gray-500">Peak Hours</div>
+                    <div className="font-semibold">{formatDuration(endOfDayInsights.energyAlignment.deepWorkDuringPeak)}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500">Off-Peak</div>
+                    <div className="font-semibold">{formatDuration(endOfDayInsights.energyAlignment.deepWorkOffPeak)}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tomorrow's Recommendations */}
+          {endOfDayInsights.tomorrowRecommendations.length > 0 && (
+            <div className="bg-white rounded-lg p-4 shadow-sm mb-4">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <ChevronRight className="text-blue-600" size={18} />
+                Recommended for Tomorrow
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {endOfDayInsights.tomorrowRecommendations.map(({ task, reason }) => (
+                  <div key={task.id} className="border border-blue-200 rounded-lg p-3 bg-blue-50">
+                    <div className="font-medium text-gray-900 text-sm mb-1">{task.name}</div>
+                    <div className="text-xs text-gray-600 mb-2">{reason}</div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="px-2 py-1 bg-white rounded text-gray-700">{task.timeBlock}</span>
+                      <span className="px-2 py-1 bg-white rounded text-gray-700">{formatDuration(task.estimatedTime)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Wins */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+            <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+              <Award className="text-green-600" size={18} />
+              Today's Wins
+            </h3>
+            <div className="space-y-1">
+              {endOfDayInsights.wins.map((win, idx) => (
+                <div key={idx} className="text-sm text-gray-700">{win}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
