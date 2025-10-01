@@ -4,7 +4,6 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { Calendar, TrendingUp, Clock, Target, Award, ChevronDown, Home } from 'lucide-react';
 import type { Task, DateRange, TimeRangePreset, ReportData } from '../../utils/types';
 import { taskStorage } from '../../lib/storage';
-import { APP_CONFIG } from '../../utils/config';
 import {
   getDateRangeForPreset,
   generateReportData,
@@ -300,13 +299,13 @@ export function Reports() {
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
-                data={byType}
+                data={byType as any}
                 dataKey="minutes"
                 nameKey="category"
                 cx="50%"
                 cy="50%"
                 outerRadius={80}
-                label={(entry) => `${entry.category} (${formatDuration(entry.minutes)})`}
+                label={(entry: any) => `${entry.category} (${formatDuration(entry.minutes)})`}
               >
                 {byType.map((entry) => (
                   <Cell key={entry.category} fill={COLORS[entry.category as keyof typeof COLORS] || '#94a3b8'} />
