@@ -49,9 +49,15 @@ export function FocusModeModal({
   const [elapsedTime, setElapsedTime] = useState(() => {
     // Calculate initial elapsed time if timer was already running
     const start = task.focusStartedAt ? new Date(task.focusStartedAt) : new Date();
-    const now = new Date();
     const paused = task.pausedTime || 0;
-    return Math.floor((now.getTime() - start.getTime()) / 1000) - paused;
+
+    // If currently paused, calculate elapsed time up to when pause started
+    // Otherwise, calculate up to now
+    const endTime = task.isPaused && task.pauseStartTime
+      ? new Date(task.pauseStartTime)
+      : new Date();
+
+    return Math.floor((endTime.getTime() - start.getTime()) / 1000) - paused;
   });
   const [quote] = useState<FocusQuote>(getRandomFocusQuote());
   const [isPaused, setIsPaused] = useState(task.isPaused || false);
