@@ -755,67 +755,81 @@ const Dashboard = () => {
   return (
     <div className="w-full max-w-7xl mx-auto p-6 bg-gray-50">
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-        <div className="flex items-start justify-between mb-2">
+        {/* Minimal Elegant Header */}
+        <div className="flex items-start justify-between mb-6">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            <h1 className="text-3xl font-bold text-gray-800 mb-1">
               Task Priority Framework
             </h1>
-            <p className="text-gray-600 mb-4">
-              {useWeightedScoring ? "Weighted" : "Simple"} ICE Score + Time
-              Blocking + 4D Decision Framework
-            </p>
             {user && (
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-gray-500">
                 Welcome, {user.name || user.email}
               </p>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/focus"
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              <Target size={18} />
-              <span className="hidden sm:inline">Focus View</span>
-            </Link>
-            <Link
-              to="/reports"
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              <TrendingUp size={18} />
-              <span className="hidden sm:inline">Reports</span>
-            </Link>
-            <Link
-              to="/notes"
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              <BookOpen size={18} />
-              <span className="hidden sm:inline">Notes</span>
-            </Link>
+
+          {/* Action Buttons - Elegant & Minimal */}
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* Primary Actions */}
             <button
               onClick={handleStartGlobalPomodoro}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg"
               title="Start Pomodoro Session"
             >
               <span className="text-lg">🍅</span>
-              <span className="hidden sm:inline">Start Pomodoro</span>
+              <span className="hidden lg:inline">Start Pomodoro</span>
             </button>
-            <button
-              onClick={() => setShowPomodoroSettings(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
-              title="Pomodoro Settings"
+
+            {/* Navigation Links */}
+            <Link
+              to="/focus"
+              className="flex items-center gap-2 px-3 py-2 text-purple-600 hover:bg-purple-50 rounded-lg font-medium transition-colors"
+              title="Focus View"
             >
-              <Settings size={18} />
-              <span className="hidden sm:inline">Settings</span>
-            </button>
-            <button
-              onClick={() => setShowWeightsSettings(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-              title="Configure ICE Weights"
+              <Target size={18} />
+              <span className="hidden xl:inline">Focus</span>
+            </Link>
+            <Link
+              to="/reports"
+              className="flex items-center gap-2 px-3 py-2 text-green-600 hover:bg-green-50 rounded-lg font-medium transition-colors"
+              title="Reports & Analytics"
             >
-              <Settings size={18} />
-              <span className="hidden sm:inline">ICE Weights</span>
-            </button>
+              <TrendingUp size={18} />
+              <span className="hidden xl:inline">Reports</span>
+            </Link>
+            <Link
+              to="/notes"
+              className="flex items-center gap-2 px-3 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium transition-colors"
+              title="Notes"
+            >
+              <BookOpen size={18} />
+              <span className="hidden xl:inline">Notes</span>
+            </Link>
+
+            {/* Settings Dropdown */}
+            <div className="relative group">
+              <button
+                className="flex items-center gap-1 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors"
+                title="Settings"
+              >
+                <Settings size={18} />
+                <span className="hidden xl:inline">Settings</span>
+              </button>
+              <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                <button
+                  onClick={() => setShowPomodoroSettings(true)}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700"
+                >
+                  🍅 Pomodoro Settings
+                </button>
+                <button
+                  onClick={() => setShowWeightsSettings(true)}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700 rounded-b-lg"
+                >
+                  ⚖️ ICE Weights
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

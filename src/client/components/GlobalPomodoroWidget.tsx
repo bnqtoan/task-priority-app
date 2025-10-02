@@ -79,65 +79,69 @@ export function GlobalPomodoroWidget() {
 
   return (
     <div
-      className={`fixed bottom-6 left-6 ${modeInfo.compactColor} text-white rounded-xl shadow-2xl z-40 min-w-[280px]`}
+      className={`fixed top-0 left-0 right-0 ${modeInfo.compactColor} text-white shadow-lg z-50 animate-slide-down`}
     >
-      <div className="p-4">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">{modeInfo.icon}</span>
-            <div>
-              <div className="font-semibold text-sm">{modeInfo.label}</div>
-              <div className="text-xs opacity-90">
-                {session.completedPomodoros}/{settings.pomodorosUntilLongBreak}{" "}
-                cycles
+      <div className="container mx-auto px-4 py-3">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          {/* Left: Mode & Timer */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl animate-pulse">{modeInfo.icon}</span>
+              <div>
+                <div className="font-bold text-sm">{modeInfo.label}</div>
+                <div className="text-xs opacity-80">
+                  Cycle {session.completedPomodoros + 1}/{settings.pomodorosUntilLongBreak}
+                </div>
+              </div>
+            </div>
+
+            {/* Timer */}
+            <div className="bg-white bg-opacity-20 rounded-lg px-4 py-2">
+              <div className="flex items-center gap-2">
+                <div className="text-2xl font-mono font-bold">
+                  {formatTime(remaining)}
+                </div>
+                <div className="text-xs opacity-90">
+                  {session.isPaused ? "⏸" : ""}
+                </div>
               </div>
             </div>
           </div>
-          <button
-            onClick={handleEnd}
-            className="hover:bg-white hover:bg-opacity-20 p-1 rounded transition"
-            title="End Pomodoro session"
-          >
-            <X size={18} />
-          </button>
-        </div>
 
-        {/* Timer Display */}
-        <div className="bg-white bg-opacity-20 rounded-lg p-3 mb-3">
-          <div className="text-center">
-            <div className="text-3xl font-mono font-bold mb-1">
-              {formatTime(remaining)}
+          {/* Right: Stats & Controls */}
+          <div className="flex items-center gap-3">
+            {/* Daily Stats */}
+            <div className="text-xs opacity-90 hidden sm:block">
+              🎯 {session.todaysPomodorosCount} today
             </div>
-            <div className="text-xs opacity-90">
-              {session.isPaused ? "⏸ Paused" : "Remaining"}
-            </div>
+
+            {/* Controls */}
+            <button
+              onClick={handlePauseToggle}
+              className="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2"
+              title={session.isPaused ? "Resume" : "Pause"}
+            >
+              {session.isPaused ? (
+                <>
+                  <Play size={16} />
+                  <span className="hidden sm:inline">Resume</span>
+                </>
+              ) : (
+                <>
+                  <Pause size={16} />
+                  <span className="hidden sm:inline">Pause</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handleEnd}
+              className="hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition"
+              title="End Pomodoro session"
+            >
+              <X size={18} />
+            </button>
           </div>
-        </div>
-
-        {/* Controls */}
-        <div className="flex gap-2">
-          <button
-            onClick={handlePauseToggle}
-            className="flex-1 bg-white bg-opacity-20 hover:bg-opacity-30 py-2 px-3 rounded-lg font-medium text-sm transition flex items-center justify-center gap-2"
-          >
-            {session.isPaused ? (
-              <>
-                <Play size={16} />
-                Resume
-              </>
-            ) : (
-              <>
-                <Pause size={16} />
-                Pause
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Daily Stats */}
-        <div className="mt-3 text-xs text-center opacity-75">
-          🎯 {session.todaysPomodorosCount} pomodoros completed today
         </div>
       </div>
     </div>
