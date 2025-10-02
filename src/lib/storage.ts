@@ -250,10 +250,13 @@ class LocalStorageTaskStorage implements TaskStorage {
     // End each active session
     for (const task of activeFocusTasks) {
       if (task.focusStartedAt) {
-        const elapsed = Math.floor(
+        // Calculate elapsed time, accounting for paused time
+        const wallTime = Math.floor(
           (new Date().getTime() - new Date(task.focusStartedAt).getTime()) /
             1000,
         );
+        const pausedSeconds = task.pausedTime || 0;
+        const elapsed = Math.max(0, wallTime - pausedSeconds);
         const durationMinutes = Math.ceil(elapsed / 60);
         await this.endFocusSession(task.id, durationMinutes);
       } else {
@@ -269,6 +272,11 @@ class LocalStorageTaskStorage implements TaskStorage {
     return this.updateTask(taskId, {
       isInFocus: true,
       focusStartedAt: new Date(),
+      // Clear any previous pause state and target duration when starting new session
+      isPaused: false,
+      pausedTime: 0,
+      pauseStartTime: undefined,
+      targetDuration: undefined,
     });
   }
 

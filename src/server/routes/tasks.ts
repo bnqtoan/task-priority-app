@@ -356,10 +356,13 @@ tasksRouter.patch("/:id/focus/start", async (c) => {
     // End each active session (except the one we're starting)
     for (const task of activeFocusTasks) {
       if (task.id !== id && task.focusStartedAt) {
-        const elapsed = Math.floor(
+        // Calculate elapsed time, accounting for paused time
+        const wallTime = Math.floor(
           (new Date().getTime() - new Date(task.focusStartedAt).getTime()) /
             1000,
         );
+        const pausedSeconds = task.pausedTime || 0;
+        const elapsed = Math.max(0, wallTime - pausedSeconds);
         const durationMinutes = Math.ceil(elapsed / 60);
 
         await db
@@ -368,6 +371,11 @@ tasksRouter.patch("/:id/focus/start", async (c) => {
             isInFocus: false,
             focusStartedAt: null,
             actualTime: (task.actualTime || 0) + durationMinutes,
+            // Clear pause state and target duration
+            isPaused: false,
+            pausedTime: 0,
+            pauseStartTime: null,
+            targetDuration: null,
             updatedAt: new Date(),
           })
           .where(eq(tasks.id, task.id))
@@ -381,6 +389,11 @@ tasksRouter.patch("/:id/focus/start", async (c) => {
       .set({
         isInFocus: true,
         focusStartedAt: new Date(),
+        // Clear any previous pause state and target duration when starting new session
+        isPaused: false,
+        pausedTime: 0,
+        pauseStartTime: null,
+        targetDuration: null,
         updatedAt: new Date(),
       })
       .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
