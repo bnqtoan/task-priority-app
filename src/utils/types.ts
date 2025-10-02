@@ -169,6 +169,20 @@ export interface PomodoroState {
   totalPomodorosToday: number; // daily stats
 }
 
+// Global Pomodoro Session (persists across tasks and page reloads)
+export interface GlobalPomodoroSession {
+  isActive: boolean; // Is there an active Pomodoro session?
+  currentMode: "work" | "short-break" | "long-break";
+  completedPomodoros: number; // Completed work cycles in current session
+  sessionStartTime: Date; // When current phase started
+  pausedTime: number; // Accumulated pause time in seconds
+  isPaused: boolean; // Is the session currently paused?
+  pauseStartTime: Date | null; // When current pause started
+  currentTaskId: number | null; // Which task is currently focused (can change)
+  todaysPomodorosCount: number; // Total completed today (all sessions)
+  lastResetDate: string; // Date string for midnight reset (YYYY-MM-DD)
+}
+
 export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
   workDuration: 25,
   shortBreakDuration: 5,

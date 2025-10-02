@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { X, Clock, Zap } from "lucide-react";
-import type { Task } from "../../utils/types";
+import type { Task, PomodoroSettings } from "../../utils/types";
 import {
   parseDurationToMinutes,
   formatMinutesToDuration,
 } from "../../utils/timer-modes";
+import { loadPomodoroSettings } from "../../utils/pomodoro";
 
 interface DurationSelectorModalProps {
   task: Task;
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (duration: number | null) => void;
+  onSelect: (duration: number | null | "pomodoro") => void;
 }
 
 const QUICK_DURATIONS = [15, 25, 30, 45, 60];
@@ -23,6 +24,7 @@ export function DurationSelectorModal({
 }: DurationSelectorModalProps) {
   const [customDuration, setCustomDuration] = useState("");
   const [selectedDuration, setSelectedDuration] = useState<number | null>(null);
+  const pomodoroSettings: PomodoroSettings = loadPomodoroSettings();
 
   if (!isOpen) return null;
 
@@ -46,6 +48,10 @@ export function DurationSelectorModal({
 
   const handleSkipTimer = () => {
     onSelect(null);
+  };
+
+  const handlePomodoro = () => {
+    onSelect("pomodoro");
   };
 
   const suggestedDuration = task.estimatedTime || null;
@@ -141,6 +147,32 @@ export function DurationSelectorModal({
           </p>
         </div>
 
+        {/* Pomodoro Option */}
+        <div className="mb-4">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">or</span>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={handlePomodoro}
+          className="w-full mb-4 px-4 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg hover:from-red-600 hover:to-orange-600 font-medium transition flex items-center justify-center gap-2 shadow-md"
+        >
+          <span className="text-xl">🍅</span>
+          <div className="text-left">
+            <div className="font-semibold">Use Pomodoro Timer</div>
+            <div className="text-xs opacity-90">
+              {pomodoroSettings.workDuration} min work ·{" "}
+              {pomodoroSettings.shortBreakDuration} min break
+            </div>
+          </div>
+        </button>
+
         {/* Action Buttons */}
         <div className="flex gap-3">
           <button
@@ -166,8 +198,8 @@ export function DurationSelectorModal({
 
         {/* Info */}
         <p className="text-xs text-gray-500 mt-4 text-center">
-          💡 Countdown is just a visual guide. Actual time tracking continues
-          regardless.
+          💡 Countdown/Pomodoro are visual guides. Actual time tracking
+          continues regardless.
         </p>
       </div>
     </div>

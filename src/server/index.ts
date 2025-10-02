@@ -25,6 +25,9 @@ app.get("/api/health", (c) => {
   return c.json({ status: "healthy", timestamp: new Date().toISOString() });
 });
 
+// SPA fallback - For any non-API, non-asset route, this will be handled by Workers Assets
+// which serves index.html, enabling client-side routing
+
 // Export for development (Hono app only)
 export { app };
 

@@ -281,18 +281,18 @@ class LocalStorageTaskStorage implements TaskStorage {
   }
 
   async endFocusSession(taskId: number, duration: number): Promise<Task> {
-    const task = await this.updateTask(taskId, {
+    // First clear the focus state
+    await this.updateTask(taskId, {
       isInFocus: false,
       focusStartedAt: undefined,
       targetDuration: null,
       isPaused: false,
       pausedTime: 0,
       pauseStartTime: null,
-      actualTime:
-        (await this.getTasks()).find((t) => t.id === taskId)?.actualTime ||
-        0 + duration,
     });
-    return task;
+
+    // Then add the time entry (which also updates actualTime)
+    return await this.addTimeEntry(taskId, duration, "focus");
   }
 
   async updatePauseState(
@@ -311,7 +311,7 @@ class LocalStorageTaskStorage implements TaskStorage {
   async addTimeEntry(
     taskId: number,
     duration: number,
-    _type: "focus" | "regular",
+    type: "focus" | "regular",
   ): Promise<Task> {
     const tasks = this.getTasksSync();
     const task = tasks.find((t) => t.id === taskId);
@@ -319,9 +319,22 @@ class LocalStorageTaskStorage implements TaskStorage {
       throw new Error("Task not found");
     }
 
+    const now = new Date();
+    const startTime = new Date(now.getTime() - duration * 60000);
+
+    const newTimeEntry = {
+      id: `${taskId}-${Date.now()}`,
+      taskId: taskId,
+      startTime: startTime,
+      endTime: now,
+      duration: duration,
+      type: type,
+    };
+
     const updatedTask = {
       ...task,
       actualTime: (task.actualTime || 0) + duration,
+      timeEntries: [...(task.timeEntries || []), newTimeEntry],
       updatedAt: new Date(),
     };
 

@@ -6,12 +6,12 @@ import {
   PomodoroSettings,
   PomodoroState,
   TimerMode,
+  GlobalPomodoroSession,
 } from "../../utils/types";
 import { getRandomFocusQuote } from "../../utils/focus-quotes";
 import {
   loadPomodoroSettings,
   getPomodoroModeInfo,
-  getNextPomodoroMode,
   getPomodoroModeDuration,
   getPomodoroCompletionMessage,
   playPomodoroSound,
@@ -24,6 +24,15 @@ import {
   isCountdownComplete,
   getCountdownCompletionMessage,
 } from "../../utils/timer-modes";
+import {
+  loadGlobalPomodoroSession,
+  getGlobalPomodoroElapsed,
+  getGlobalPomodoroRemaining,
+  pauseGlobalPomodoro,
+  resumeGlobalPomodoro,
+  completeGlobalPomodoroPhase,
+  isGlobalPomodoroPhaseComplete,
+} from "../../lib/pomodoro-session";
 
 interface FocusModeModalProps {
   task: Task;
@@ -83,24 +92,33 @@ export function FocusModeModal({
   });
   const [isMinimized, setIsMinimized] = useState(false);
 
-  // Pomodoro state
+  // Pomodoro state - now using global session
   const [pomodoroSettings] = useState<PomodoroSettings>(loadPomodoroSettings());
-  const [pomodoroState, setPomodoroState] = useState<PomodoroState>(() => {
-    if (usePomodoroMode) {
-      return {
+  const [globalPomodoroSession, setGlobalPomodoroSession] =
+    useState<GlobalPomodoroSession | null>(null);
+
+  // Convert global session to PomodoroState for backward compatibility
+  const pomodoroState: PomodoroState = globalPomodoroSession
+    ? {
         isEnabled: true,
+        currentMode: globalPomodoroSession.currentMode,
+        completedPomodoros: globalPomodoroSession.completedPomodoros,
+        totalPomodorosToday: globalPomodoroSession.todaysPomodorosCount,
+      }
+    : {
+        isEnabled: false,
         currentMode: "work",
         completedPomodoros: 0,
         totalPomodorosToday: 0,
       };
+
+  // Load global Pomodoro session on mount
+  useEffect(() => {
+    if (usePomodoroMode) {
+      const session = loadGlobalPomodoroSession();
+      setGlobalPomodoroSession(session);
     }
-    return {
-      isEnabled: false,
-      currentMode: "work",
-      completedPomodoros: 0,
-      totalPomodorosToday: 0,
-    };
-  });
+  }, [usePomodoroMode]);
 
   // Handlers - must be defined before useEffect that uses them
   const handleCountdownComplete = React.useCallback(() => {
@@ -129,44 +147,25 @@ export function FocusModeModal({
       showPomodoroNotification("Pomodoro Timer", message);
     }
 
-    // Update state for next phase
-    const nextMode = getNextPomodoroMode(
-      pomodoroState.currentMode,
-      pomodoroState.completedPomodoros +
-        (pomodoroState.currentMode === "work" ? 1 : 0),
-      pomodoroSettings.pomodorosUntilLongBreak,
-    );
+    // Complete phase in global session
+    const updatedSession = completeGlobalPomodoroPhase();
+    setGlobalPomodoroSession(updatedSession);
 
-    const newCompletedPomodoros =
-      pomodoroState.currentMode === "work"
-        ? pomodoroState.completedPomodoros + 1
-        : nextMode === "work" &&
-            pomodoroState.completedPomodoros >=
-              pomodoroSettings.pomodorosUntilLongBreak
-          ? 0
-          : pomodoroState.completedPomodoros;
-
-    setPomodoroState({
-      ...pomodoroState,
-      currentMode: nextMode,
-      completedPomodoros: newCompletedPomodoros,
-    });
-
-    // Reset timer
-    setElapsedTime(0);
-    setPausedTime(0);
-
-    // Auto-start next phase if enabled
-    if (
-      (nextMode !== "work" && pomodoroSettings.autoStartBreaks) ||
-      (nextMode === "work" && pomodoroSettings.autoStartPomodoros)
-    ) {
-      // Timer continues automatically
-      setIsPaused(false);
-    } else {
-      // Pause and show option to start
-      setIsPaused(true);
-      // Could show a modal here, but for now just pause
+    if (updatedSession) {
+      // Auto-start next phase if enabled
+      const nextMode = updatedSession.currentMode;
+      if (
+        (nextMode !== "work" && pomodoroSettings.autoStartBreaks) ||
+        (nextMode === "work" && pomodoroSettings.autoStartPomodoros)
+      ) {
+        // Timer continues automatically - session is already reset
+        setIsPaused(false);
+      } else {
+        // Pause and show option to start
+        pauseGlobalPomodoro();
+        setGlobalPomodoroSession(loadGlobalPomodoroSession());
+        setIsPaused(true);
+      }
     }
   }, [pomodoroState, pomodoroSettings]);
 
@@ -192,12 +191,9 @@ export function FocusModeModal({
         }
       }
 
-      // Check if Pomodoro session is complete
-      if (pomodoroState.isEnabled) {
-        const targetDuration =
-          getPomodoroModeDuration(pomodoroState.currentMode, pomodoroSettings) *
-          60;
-        if (elapsed >= targetDuration) {
+      // Check if Pomodoro session is complete (using global session)
+      if (pomodoroState.isEnabled && globalPomodoroSession) {
+        if (isGlobalPomodoroPhaseComplete()) {
           handlePomodoroComplete();
         }
       }
@@ -211,6 +207,7 @@ export function FocusModeModal({
     pausedTime,
     pomodoroState,
     pomodoroSettings,
+    globalPomodoroSession,
     timerMode,
     targetDuration,
     countdownCompleted,
@@ -230,6 +227,19 @@ export function FocusModeModal({
   };
 
   const handlePause = async () => {
+    // If using global Pomodoro, pause/resume the global session
+    if (pomodoroState.isEnabled && globalPomodoroSession) {
+      if (isPaused) {
+        resumeGlobalPomodoro();
+      } else {
+        pauseGlobalPomodoro();
+      }
+      setGlobalPomodoroSession(loadGlobalPomodoroSession());
+      setIsPaused(!isPaused);
+      return;
+    }
+
+    // Regular pause/resume logic for non-Pomodoro sessions
     let newPausedTime = pausedTime;
     let newPauseStartTime: Date | null = null;
     let newIsPaused = !isPaused;

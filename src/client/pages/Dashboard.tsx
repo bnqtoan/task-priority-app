@@ -26,6 +26,7 @@ import { FocusModeModal } from "../components/FocusModeModal";
 import { DurationSelectorModal } from "../components/DurationSelectorModal";
 import { ICEWeightsSettings } from "../components/ICEWeightsSettings";
 import { PomodoroSettingsComponent } from "../components/PomodoroSettings";
+import { GlobalPomodoroWidget } from "../components/GlobalPomodoroWidget";
 import { QuickAddFAB } from "../components/QuickAddFAB";
 import {
   calculateICE,
@@ -84,10 +85,14 @@ const Dashboard = () => {
     [key: string]: any;
   }>({});
 
+  // Track active input field to preserve focus during re-sorts
+  const activeInputRef = useRef<{ taskId: number; field: string } | null>(null);
+
   // Focus mode state
   const [focusTask, setFocusTask] = useState<Task | null>(null);
   const [isFocusModeOpen, setIsFocusModeOpen] = useState(false);
   const [floatingWidgetTime, setFloatingWidgetTime] = useState(0);
+  const [usePomodoroMode, setUsePomodoroMode] = useState(false);
 
   // Duration selector state
   const [showDurationSelector, setShowDurationSelector] = useState(false);
@@ -186,6 +191,26 @@ const Dashboard = () => {
     };
   }, []);
 
+  // Restore focus after tasks are re-sorted (e.g., when ICE scores change)
+  useEffect(() => {
+    if (activeInputRef.current) {
+      const { taskId, field } = activeInputRef.current;
+      // Small delay to ensure DOM has updated after sort
+      const timeoutId = setTimeout(() => {
+        const input = document.querySelector(
+          `input[data-task-id="${taskId}"][data-field="${field}"]`
+        ) as HTMLInputElement;
+        if (input && document.activeElement !== input) {
+          input.focus();
+          // Restore cursor to end of input
+          const length = input.value.length;
+          input.setSelectionRange(length, length);
+        }
+      }, 10);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [tasks]);
+
   const addTask = async (taskToAdd?: CreateTaskInput) => {
     const taskData = taskToAdd || newTask;
     if (!taskData.name.trim()) return;
@@ -278,7 +303,7 @@ const Dashboard = () => {
     }
   };
 
-  // Debounced version for text inputs like task name
+  // Smart debounced update with adaptive delays
   const debouncedUpdateTask = useCallback(
     (id: number, field: string, value: any) => {
       // Update local state immediately for responsive UI
@@ -297,6 +322,10 @@ const Dashboard = () => {
       if (debounceTimeouts.current[key]) {
         clearTimeout(debounceTimeouts.current[key]);
       }
+
+      // Smart delay: shorter for text fields, longer for numbers
+      const isTextField = field === "name" || field === "notes";
+      const debounceDelay = isTextField ? 300 : 200; // Reduced from 500ms
 
       // Set new timeout to update via API after delay
       debounceTimeouts.current[key] = setTimeout(async () => {
@@ -342,7 +371,7 @@ const Dashboard = () => {
           );
         }
         delete debounceTimeouts.current[key];
-      }, 500); // 500ms delay
+      }, debounceDelay);
     },
     [localTaskValues, statusFilter],
   );
@@ -354,7 +383,7 @@ const Dashboard = () => {
     setShowDurationSelector(true);
   };
 
-  const handleDurationSelected = async (duration: number | null) => {
+  const handleDurationSelected = async (duration: number | null | "pomodoro") => {
     setShowDurationSelector(false);
     if (!selectedTaskForFocus) return;
 
@@ -362,6 +391,22 @@ const Dashboard = () => {
       const updatedTask = await taskStorage.startFocusSession(
         selectedTaskForFocus.id,
       );
+
+      // Handle Pomodoro mode
+      if (duration === "pomodoro") {
+        const { startGlobalPomodoroSession } = await import("../../lib/pomodoro-session");
+        startGlobalPomodoroSession(selectedTaskForFocus.id);
+
+        setTasks(
+          tasks.map((t) =>
+            t.id === selectedTaskForFocus.id ? updatedTask : t,
+          ),
+        );
+        setFocusTask(updatedTask);
+        setUsePomodoroMode(true);
+        setIsFocusModeOpen(true);
+        return;
+      }
 
       // Save target duration to database if provided
       if (duration !== null) {
@@ -383,6 +428,7 @@ const Dashboard = () => {
         setFocusTask(updatedTask);
       }
 
+      setUsePomodoroMode(false);
       setIsFocusModeOpen(true);
     } catch (err) {
       setError(
@@ -1305,6 +1351,8 @@ const Dashboard = () => {
                           <div className="flex items-center gap-2 mb-2">
                             <input
                               type="text"
+                              data-task-id={task.id}
+                              data-field="name"
                               value={
                                 localTaskValues[`${task.id}-name`] ?? task.name
                               }
@@ -1315,6 +1363,12 @@ const Dashboard = () => {
                                   e.target.value,
                                 )
                               }
+                              onFocus={() => {
+                                activeInputRef.current = { taskId: task.id, field: "name" };
+                              }}
+                              onBlur={() => {
+                                activeInputRef.current = null;
+                              }}
                               className={`flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 font-medium ${
                                 task.status === "completed"
                                   ? "line-through text-gray-500"
@@ -1525,6 +1579,8 @@ const Dashboard = () => {
                                     type="number"
                                     min="1"
                                     max="10"
+                                    data-task-id={task.id}
+                                    data-field="impact"
                                     value={task.impact}
                                     onChange={(e) =>
                                       updateTask(
@@ -1533,6 +1589,12 @@ const Dashboard = () => {
                                         parseInt(e.target.value) || 1,
                                       )
                                     }
+                                    onFocus={() => {
+                                      activeInputRef.current = { taskId: task.id, field: "impact" };
+                                    }}
+                                    onBlur={() => {
+                                      activeInputRef.current = null;
+                                    }}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
                                   />
                                 </div>
@@ -1544,6 +1606,8 @@ const Dashboard = () => {
                                     type="number"
                                     min="1"
                                     max="10"
+                                    data-task-id={task.id}
+                                    data-field="confidence"
                                     value={task.confidence}
                                     onChange={(e) =>
                                       updateTask(
@@ -1552,6 +1616,12 @@ const Dashboard = () => {
                                         parseInt(e.target.value) || 1,
                                       )
                                     }
+                                    onFocus={() => {
+                                      activeInputRef.current = { taskId: task.id, field: "confidence" };
+                                    }}
+                                    onBlur={() => {
+                                      activeInputRef.current = null;
+                                    }}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
                                   />
                                 </div>
@@ -1563,6 +1633,8 @@ const Dashboard = () => {
                                     type="number"
                                     min="1"
                                     max="10"
+                                    data-task-id={task.id}
+                                    data-field="ease"
                                     value={task.ease}
                                     onChange={(e) =>
                                       updateTask(
@@ -1571,6 +1643,12 @@ const Dashboard = () => {
                                         parseInt(e.target.value) || 1,
                                       )
                                     }
+                                    onFocus={() => {
+                                      activeInputRef.current = { taskId: task.id, field: "ease" };
+                                    }}
+                                    onBlur={() => {
+                                      activeInputRef.current = null;
+                                    }}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
                                   />
                                 </div>
@@ -1643,6 +1721,8 @@ const Dashboard = () => {
                                   <input
                                     type="number"
                                     min="5"
+                                    data-task-id={task.id}
+                                    data-field="estimatedTime"
                                     value={task.estimatedTime}
                                     onChange={(e) =>
                                       updateTask(
@@ -1651,6 +1731,12 @@ const Dashboard = () => {
                                         parseInt(e.target.value) || 5,
                                       )
                                     }
+                                    onFocus={() => {
+                                      activeInputRef.current = { taskId: task.id, field: "estimatedTime" };
+                                    }}
+                                    onBlur={() => {
+                                      activeInputRef.current = null;
+                                    }}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
                                   />
                                 </div>
@@ -1808,10 +1894,20 @@ const Dashboard = () => {
                                   Notes
                                 </label>
                                 <textarea
-                                  value={task.notes || ""}
-                                  onChange={(e) =>
-                                    updateTask(task.id, "notes", e.target.value)
+                                  data-task-id={task.id}
+                                  data-field="notes"
+                                  value={
+                                    localTaskValues[`${task.id}-notes`] ?? (task.notes || "")
                                   }
+                                  onChange={(e) =>
+                                    debouncedUpdateTask(task.id, "notes", e.target.value)
+                                  }
+                                  onFocus={() => {
+                                    activeInputRef.current = { taskId: task.id, field: "notes" };
+                                  }}
+                                  onBlur={() => {
+                                    activeInputRef.current = null;
+                                  }}
                                   placeholder="Add detailed description, requirements, or notes..."
                                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 h-32 resize-none"
                                 />
@@ -2106,9 +2202,13 @@ const Dashboard = () => {
           isOpen={isFocusModeOpen}
           onClose={closeFocusMode}
           onComplete={endFocusSession}
+          usePomodoroMode={usePomodoroMode}
           targetDuration={focusTask.targetDuration ?? null}
         />
       )}
+
+      {/* Global Pomodoro Widget */}
+      <GlobalPomodoroWidget />
 
       {/* Floating Timer Widget - Shows when modal is closed but task is in focus */}
       {focusTask && !isFocusModeOpen && (

@@ -365,6 +365,23 @@ tasksRouter.patch("/:id/focus/start", async (c) => {
         const elapsed = Math.max(0, wallTime - pausedSeconds);
         const durationMinutes = Math.ceil(elapsed / 60);
 
+        const now = new Date();
+        const startTime = new Date(now.getTime() - durationMinutes * 60000);
+
+        // Create time entry for the stopped session
+        await db.insert(timeEntries).values({
+          id: `${task.id}-${Date.now()}`,
+          userId: user.id,
+          taskId: task.id,
+          startTime: startTime,
+          endTime: now,
+          duration: durationMinutes,
+          type: "focus",
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        // Update the task
         await db
           .update(tasks)
           .set({
@@ -446,6 +463,23 @@ tasksRouter.patch("/:id/focus/end", async (c) => {
       return c.json({ error: "Task not found" }, 404);
     }
 
+    const now = new Date();
+    const startTime = new Date(now.getTime() - duration * 60000);
+
+    // Create time entry in timeEntries table
+    await db.insert(timeEntries).values({
+      id: `${id}-${Date.now()}`,
+      userId: user.id,
+      taskId: id,
+      startTime: startTime,
+      endTime: now,
+      duration: duration,
+      type: "focus",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Update task
     const [updatedTask] = await db
       .update(tasks)
       .set({
@@ -480,7 +514,7 @@ tasksRouter.post("/:id/time", async (c) => {
   const id = parseInt(c.req.param("id"));
   const user = c.get("user");
   const db = createDB(c.env);
-  const { duration } = await c.req.json();
+  const { duration, type = "regular" } = await c.req.json();
 
   if (!db) {
     return c.json({ error: "Database not available" }, 500);
@@ -498,6 +532,23 @@ tasksRouter.post("/:id/time", async (c) => {
       return c.json({ error: "Task not found" }, 404);
     }
 
+    const now = new Date();
+    const startTime = new Date(now.getTime() - duration * 60000);
+
+    // Create time entry in timeEntries table
+    await db.insert(timeEntries).values({
+      id: `${id}-${Date.now()}`,
+      userId: user.id,
+      taskId: id,
+      startTime: startTime,
+      endTime: now,
+      duration: duration,
+      type: type,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Update task
     const [updatedTask] = await db
       .update(tasks)
       .set({
