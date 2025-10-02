@@ -57,7 +57,10 @@ export function FocusModeModal({
       ? new Date(task.pauseStartTime)
       : new Date();
 
-    return Math.floor((endTime.getTime() - start.getTime()) / 1000) - paused;
+    const elapsed = Math.floor((endTime.getTime() - start.getTime()) / 1000) - paused;
+
+    // Prevent negative elapsed time (can happen if pausedTime is corrupted or greater than wall time)
+    return Math.max(0, elapsed);
   });
   const [quote] = useState<FocusQuote>(getRandomFocusQuote());
   const [isPaused, setIsPaused] = useState(task.isPaused || false);
