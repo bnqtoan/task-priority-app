@@ -442,6 +442,43 @@ const Dashboard = () => {
     setSelectedTaskForFocus(null);
   };
 
+  const handleStartGlobalPomodoro = async () => {
+    // Check if there's already an active Pomodoro session
+    const { hasActiveGlobalPomodoro, loadGlobalPomodoroSession } = await import("../../lib/pomodoro-session");
+
+    if (hasActiveGlobalPomodoro()) {
+      alert("A Pomodoro session is already active! Check the floating widget.");
+      return;
+    }
+
+    // Find first active task to focus on, or start without task
+    const firstActiveTask = tasks.find((t) => t.status === "active");
+
+    if (firstActiveTask) {
+      // Start focus session on the first active task
+      try {
+        const updatedTask = await taskStorage.startFocusSession(firstActiveTask.id);
+
+        const { startGlobalPomodoroSession } = await import("../../lib/pomodoro-session");
+        startGlobalPomodoroSession(firstActiveTask.id);
+
+        setTasks(tasks.map((t) => (t.id === firstActiveTask.id ? updatedTask : t)));
+        setFocusTask(updatedTask);
+        setUsePomodoroMode(true);
+        setIsFocusModeOpen(true);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to start Pomodoro session",
+        );
+      }
+    } else {
+      // No active tasks - just start global Pomodoro without task
+      const { startGlobalPomodoroSession } = await import("../../lib/pomodoro-session");
+      startGlobalPomodoroSession(null);
+      alert("Pomodoro session started! You can start working on a task anytime.");
+    }
+  };
+
   const endFocusSession = async (duration: number) => {
     if (!focusTask) return;
 
@@ -756,12 +793,20 @@ const Dashboard = () => {
               <span className="hidden sm:inline">Notes</span>
             </Link>
             <button
+              onClick={handleStartGlobalPomodoro}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+              title="Start Pomodoro Session"
+            >
+              <span className="text-lg">🍅</span>
+              <span className="hidden sm:inline">Start Pomodoro</span>
+            </button>
+            <button
               onClick={() => setShowPomodoroSettings(true)}
               className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
               title="Pomodoro Settings"
             >
-              <span className="text-lg">🍅</span>
-              <span className="hidden sm:inline">Pomodoro</span>
+              <Settings size={18} />
+              <span className="hidden sm:inline">Settings</span>
             </button>
             <button
               onClick={() => setShowWeightsSettings(true)}

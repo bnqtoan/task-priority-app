@@ -79,7 +79,7 @@ export function GlobalPomodoroWidget() {
 
   return (
     <div
-      className={`fixed bottom-6 right-6 ${modeInfo.compactColor} text-white rounded-xl shadow-2xl z-40 min-w-[280px]`}
+      className={`fixed bottom-6 left-6 ${modeInfo.compactColor} text-white rounded-xl shadow-2xl z-40 min-w-[280px]`}
     >
       <div className="p-4">
         {/* Header */}
