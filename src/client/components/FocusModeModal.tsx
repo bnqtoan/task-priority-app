@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { CompactFocusMode } from "./CompactFocusMode";
 import {
   Task,
@@ -130,6 +130,8 @@ export function FocusModeModal({
     timerMode,
     targetDuration,
     countdownCompleted,
+    handleCountdownComplete,
+    handlePomodoroComplete,
   ]);
 
   const formatTime = (seconds: number) => {
@@ -186,7 +188,7 @@ export function FocusModeModal({
     onClose();
   };
 
-  const handleCountdownComplete = () => {
+  const handleCountdownComplete = React.useCallback(() => {
     setCountdownCompleted(true);
     setShowCompletionNotification(true);
 
@@ -194,14 +196,14 @@ export function FocusModeModal({
     playPomodoroSound(); // Reuse Pomodoro sound
     const message = getCountdownCompletionMessage(targetDuration || 0);
     showPomodoroNotification("Timer Complete!", message);
-  };
+  }, [targetDuration]);
 
   const handleContinueWorking = () => {
     setShowCompletionNotification(false);
     // Timer continues tracking in background
   };
 
-  const handlePomodoroComplete = () => {
+  const handlePomodoroComplete = React.useCallback(() => {
     // Play sound and show notification
     if (pomodoroSettings.playSound) {
       playPomodoroSound();
@@ -256,7 +258,7 @@ export function FocusModeModal({
       setIsPaused(true);
       // Could show a modal here, but for now just pause
     }
-  };
+  }, [pomodoroState, pomodoroSettings]);
 
   const toggleViewMode = () => {
     const newMode = !isCompactMode;
