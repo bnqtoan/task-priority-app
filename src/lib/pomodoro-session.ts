@@ -84,8 +84,9 @@ export function hasActiveGlobalPomodoro(): boolean {
 
 /**
  * Start a new global Pomodoro session
+ * @param taskId - Optional task ID to associate with the session, null for standalone timer
  */
-export function startGlobalPomodoroSession(taskId: number): GlobalPomodoroSession {
+export function startGlobalPomodoroSession(taskId: number | null): GlobalPomodoroSession {
   const today = getTodayDateString();
 
   const session: GlobalPomodoroSession = {

@@ -14,6 +14,8 @@ import {
   pauseGlobalPomodoro,
   resumeGlobalPomodoro,
   endGlobalPomodoroSession,
+  completeGlobalPomodoroPhase,
+  isGlobalPomodoroPhaseComplete,
 } from "../../lib/pomodoro-session";
 import { loadPomodoroSettings } from "../../utils/pomodoro";
 import { getPomodoroModeInfo } from "../../utils/pomodoro";
@@ -23,6 +25,7 @@ export function GlobalPomodoroWidget() {
   const [session, setSession] = useState<GlobalPomodoroSession | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [remaining, setRemaining] = useState(0);
+  const [showPhaseComplete, setShowPhaseComplete] = useState(false);
 
   // Load session on mount and set up interval
   useEffect(() => {
@@ -31,8 +34,23 @@ export function GlobalPomodoroWidget() {
       setSession(currentSession);
 
       if (currentSession && currentSession.isActive) {
-        setElapsed(getGlobalPomodoroElapsed());
-        setRemaining(getGlobalPomodoroRemaining());
+        const newElapsed = getGlobalPomodoroElapsed();
+        const newRemaining = getGlobalPomodoroRemaining();
+        setElapsed(newElapsed);
+        setRemaining(newRemaining);
+
+        // Check if phase is complete (timer reached 0:00)
+        if (isGlobalPomodoroPhaseComplete() && newRemaining === 0) {
+          // Show completion animation
+          setShowPhaseComplete(true);
+
+          // Auto-transition after 2 seconds
+          setTimeout(() => {
+            completeGlobalPomodoroPhase();
+            setShowPhaseComplete(false);
+            setSession(loadGlobalPomodoroSession());
+          }, 2000);
+        }
       }
     };
 
@@ -78,13 +96,37 @@ export function GlobalPomodoroWidget() {
   };
 
   return (
-    <div
-      className={`fixed top-0 left-0 right-0 ${modeInfo.compactColor} text-white shadow-lg z-50 animate-slide-down`}
-    >
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          {/* Left: Mode & Timer */}
-          <div className="flex items-center gap-4">
+    <>
+      {/* Phase Complete Notification */}
+      {showPhaseComplete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 transform animate-bounce">
+            <div className="text-center">
+              <div className="text-6xl mb-4">
+                {session.currentMode === "work" ? "🎉" : "☕"}
+              </div>
+              <div className="text-2xl font-bold text-gray-900 mb-2">
+                {session.currentMode === "work"
+                  ? "Work Session Complete!"
+                  : "Break Time Over!"}
+              </div>
+              <div className="text-gray-600">
+                {session.currentMode === "work"
+                  ? "Time for a break..."
+                  : "Back to work!"}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div
+        className={`sticky top-0 left-0 right-0 ${modeInfo.compactColor} text-white shadow-lg z-30 animate-slide-down`}
+      >
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            {/* Left: Mode & Timer */}
+            <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-2xl animate-pulse">{modeInfo.icon}</span>
               <div>
@@ -145,5 +187,6 @@ export function GlobalPomodoroWidget() {
         </div>
       </div>
     </div>
+    </>
   );
 }

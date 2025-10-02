@@ -444,39 +444,16 @@ const Dashboard = () => {
 
   const handleStartGlobalPomodoro = async () => {
     // Check if there's already an active Pomodoro session
-    const { hasActiveGlobalPomodoro, loadGlobalPomodoroSession } = await import("../../lib/pomodoro-session");
+    const { hasActiveGlobalPomodoro, startGlobalPomodoroSession } = await import("../../lib/pomodoro-session");
 
     if (hasActiveGlobalPomodoro()) {
-      alert("A Pomodoro session is already active! Check the floating widget.");
+      alert("A Pomodoro session is already active! Check the timer widget at the top.");
       return;
     }
 
-    // Find first active task to focus on, or start without task
-    const firstActiveTask = tasks.find((t) => t.status === "active");
-
-    if (firstActiveTask) {
-      // Start focus session on the first active task
-      try {
-        const updatedTask = await taskStorage.startFocusSession(firstActiveTask.id);
-
-        const { startGlobalPomodoroSession } = await import("../../lib/pomodoro-session");
-        startGlobalPomodoroSession(firstActiveTask.id);
-
-        setTasks(tasks.map((t) => (t.id === firstActiveTask.id ? updatedTask : t)));
-        setFocusTask(updatedTask);
-        setUsePomodoroMode(true);
-        setIsFocusModeOpen(true);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to start Pomodoro session",
-        );
-      }
-    } else {
-      // No active tasks - just start global Pomodoro without task
-      const { startGlobalPomodoroSession } = await import("../../lib/pomodoro-session");
-      startGlobalPomodoroSession(null);
-      alert("Pomodoro session started! You can start working on a task anytime.");
-    }
+    // Start standalone Pomodoro session without task tracking
+    // User can work on any task while the Pomodoro timer runs
+    startGlobalPomodoroSession(null);
   };
 
   const endFocusSession = async (duration: number) => {
@@ -753,8 +730,12 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-6 bg-gray-50">
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+    <>
+      {/* Global Pomodoro Widget - Sticky at top */}
+      <GlobalPomodoroWidget />
+
+      <div className="w-full max-w-7xl mx-auto p-6 bg-gray-50">
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
         {/* Minimal Elegant Header */}
         <div className="flex items-start justify-between mb-6">
           <div className="flex-1">
@@ -2266,9 +2247,6 @@ const Dashboard = () => {
         />
       )}
 
-      {/* Global Pomodoro Widget */}
-      <GlobalPomodoroWidget />
-
       {/* Floating Timer Widget - Shows when modal is closed but task is in focus */}
       {focusTask && !isFocusModeOpen && (
         <div
@@ -2421,6 +2399,7 @@ const Dashboard = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 
