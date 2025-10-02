@@ -87,6 +87,74 @@ export function FocusModeModal({
     };
   });
 
+  // Handlers - must be defined before useEffect that uses them
+  const handleCountdownComplete = React.useCallback(() => {
+    setCountdownCompleted(true);
+    setShowCompletionNotification(true);
+
+    // Play sound and show notification
+    playPomodoroSound(); // Reuse Pomodoro sound
+    const message = getCountdownCompletionMessage(targetDuration || 0);
+    showPomodoroNotification("Timer Complete!", message);
+  }, [targetDuration]);
+
+  const handlePomodoroComplete = React.useCallback(() => {
+    // Play sound and show notification
+    if (pomodoroSettings.playSound) {
+      playPomodoroSound();
+    }
+
+    const message = getPomodoroCompletionMessage(
+      pomodoroState.currentMode,
+      pomodoroState.completedPomodoros,
+      pomodoroSettings.pomodorosUntilLongBreak,
+    );
+
+    if (pomodoroSettings.showNotifications) {
+      showPomodoroNotification("Pomodoro Timer", message);
+    }
+
+    // Update state for next phase
+    const nextMode = getNextPomodoroMode(
+      pomodoroState.currentMode,
+      pomodoroState.completedPomodoros +
+        (pomodoroState.currentMode === "work" ? 1 : 0),
+      pomodoroSettings.pomodorosUntilLongBreak,
+    );
+
+    const newCompletedPomodoros =
+      pomodoroState.currentMode === "work"
+        ? pomodoroState.completedPomodoros + 1
+        : nextMode === "work" &&
+            pomodoroState.completedPomodoros >=
+              pomodoroSettings.pomodorosUntilLongBreak
+          ? 0
+          : pomodoroState.completedPomodoros;
+
+    setPomodoroState({
+      ...pomodoroState,
+      currentMode: nextMode,
+      completedPomodoros: newCompletedPomodoros,
+    });
+
+    // Reset timer
+    setElapsedTime(0);
+    setPausedTime(0);
+
+    // Auto-start next phase if enabled
+    if (
+      (nextMode !== "work" && pomodoroSettings.autoStartBreaks) ||
+      (nextMode === "work" && pomodoroSettings.autoStartPomodoros)
+    ) {
+      // Timer continues automatically
+      setIsPaused(false);
+    } else {
+      // Pause and show option to start
+      setIsPaused(true);
+      // Could show a modal here, but for now just pause
+    }
+  }, [pomodoroState, pomodoroSettings]);
+
   // Timer logic
   useEffect(() => {
     if (!isOpen || isPaused) return;
@@ -188,77 +256,10 @@ export function FocusModeModal({
     onClose();
   };
 
-  const handleCountdownComplete = React.useCallback(() => {
-    setCountdownCompleted(true);
-    setShowCompletionNotification(true);
-
-    // Play sound and show notification
-    playPomodoroSound(); // Reuse Pomodoro sound
-    const message = getCountdownCompletionMessage(targetDuration || 0);
-    showPomodoroNotification("Timer Complete!", message);
-  }, [targetDuration]);
-
   const handleContinueWorking = () => {
     setShowCompletionNotification(false);
     // Timer continues tracking in background
   };
-
-  const handlePomodoroComplete = React.useCallback(() => {
-    // Play sound and show notification
-    if (pomodoroSettings.playSound) {
-      playPomodoroSound();
-    }
-
-    const message = getPomodoroCompletionMessage(
-      pomodoroState.currentMode,
-      pomodoroState.completedPomodoros,
-      pomodoroSettings.pomodorosUntilLongBreak,
-    );
-
-    if (pomodoroSettings.showNotifications) {
-      showPomodoroNotification("Pomodoro Timer", message);
-    }
-
-    // Update state for next phase
-    const nextMode = getNextPomodoroMode(
-      pomodoroState.currentMode,
-      pomodoroState.completedPomodoros +
-        (pomodoroState.currentMode === "work" ? 1 : 0),
-      pomodoroSettings.pomodorosUntilLongBreak,
-    );
-
-    const newCompletedPomodoros =
-      pomodoroState.currentMode === "work"
-        ? pomodoroState.completedPomodoros + 1
-        : nextMode === "work" &&
-            pomodoroState.completedPomodoros >=
-              pomodoroSettings.pomodorosUntilLongBreak
-          ? 0
-          : pomodoroState.completedPomodoros;
-
-    setPomodoroState({
-      ...pomodoroState,
-      currentMode: nextMode,
-      completedPomodoros: newCompletedPomodoros,
-    });
-
-    // Reset timer
-    setElapsedTime(0);
-    setPausedTime(0);
-
-    // Auto-start next phase if enabled
-    if (
-      (nextMode !== "work" && pomodoroSettings.autoStartBreaks) ||
-      (nextMode === "work" && pomodoroSettings.autoStartPomodoros)
-    ) {
-      // Timer continues automatically
-      setIsPaused(false);
-    } else {
-      // Pause and show option to start
-      setIsPaused(true);
-      // Could show a modal here, but for now just pause
-    }
-  }, [pomodoroState, pomodoroSettings]);
 
   const toggleViewMode = () => {
     const newMode = !isCompactMode;
