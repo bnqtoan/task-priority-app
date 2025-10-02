@@ -195,6 +195,7 @@ export function FocusModeModal({
     isPaused,
     pausedTime,
     pomodoroState,
+    pomodoroSettings,
     timerMode,
     targetDuration,
     countdownCompleted,
