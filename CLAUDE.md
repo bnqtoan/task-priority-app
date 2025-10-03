@@ -43,6 +43,102 @@ npm run build:server        # TypeScript compilation + Wrangler dry-run
 npm run deploy              # Deploy to Cloudflare Workers
 ```
 
+## Cloudflare Workers SPA Routing
+
+**CRITICAL:** This app is a Single Page Application (React Router) deployed to Cloudflare Workers. Direct URL access (like `/reports`, `/focus`) requires special configuration.
+
+### How Cloudflare Workers SPA Routing Works
+
+Cloudflare Workers with Static Assets supports two serving modes:
+
+1. **Default mode**: Serves exact file matches only. Returns 404 for non-existent files.
+2. **SPA mode**: Serves `index.html` with HTTP 200 for all non-matching routes, enabling client-side routing.
+
+### Configuration (wrangler.toml)
+
+**Current setup (Wrangler v3):**
+```toml
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"  # KEY: Enables SPA mode
+```
+
+**Future setup (Wrangler v4.20.0+):**
+```toml
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]  # Only available in Wrangler 4.20.0+
+```
+
+### How It Works
+
+1. **`not_found_handling = "single-page-application"`**
+   - When a request doesn't match a static file in `./dist`, Workers serves `/index.html` with HTTP 200 status
+   - This allows React Router to handle routes like `/reports`, `/focus`, `/notes`
+   - Without this setting, accessing `/reports` directly returns 404
+   - **This is the ONLY required setting for SPA routing to work**
+
+2. **Request Flow (Wrangler v3)**
+   - All routes are handled by Worker script first
+   - Worker script handles `/api/*` routes with Hono
+   - For non-API routes, Worker script falls through (no match)
+   - Assets middleware checks for static files
+   - If no static file found, `not_found_handling` serves `index.html`
+   - React Router takes over and renders the correct page
+
+3. **`run_worker_first` (Wrangler v4.20.0+ only)**
+   - Advanced control over which routes invoke Worker script
+   - Array of glob patterns: `["/api/*", "!/api/docs/*"]`
+   - Requires `assets.binding` to be set for fetching assets from Worker
+   - **Not needed for basic SPA routing - only for optimization**
+
+4. **Navigation vs API Requests**
+   - **Navigation requests** (browser URL bar, links): Go through Worker, fall through to assets, fall back to `index.html`
+   - **API requests** (`/api/*`): Handled by Worker script (Hono routes)
+   - **Static assets** (`/assets/*`, `/vite.svg`): Served directly from `./dist`
+
+### What NOT to Do
+
+❌ **Don't use `_routes.json`** - This is the legacy Cloudflare Pages approach and is deprecated when using `[assets]` configuration
+
+❌ **Don't add catch-all routes in Worker script** - The `not_found_handling` setting handles SPA fallback automatically
+
+❌ **Don't set `run_worker_first = true` without `assets.binding`** - Causes warnings and is not needed for basic SPA routing
+
+❌ **Don't use `run_worker_first = ["/api/*"]` with Wrangler v3** - Array syntax only works in Wrangler v4.20.0+
+
+### File Structure
+
+```
+dist/
+├── index.html          # SPA entry point (served for all non-matching routes)
+├── assets/
+│   ├── index-*.js     # Vite bundled JS
+│   └── index-*.css    # Vite bundled CSS
+└── vite.svg           # Static assets
+```
+
+### Testing
+
+1. **Local development**: `npm run dev` uses Vite's built-in SPA handling
+2. **Production**: Direct URL access only works after deploying with correct `wrangler.toml` settings
+3. **Verify**: After deployment, test direct access to `/reports`, `/focus`, `/notes` in browser
+
+### Debugging
+
+If direct URL access returns 404:
+1. Check `wrangler.toml` has `not_found_handling = "single-page-application"` in `[assets]` section
+2. Ensure no `_routes.json` file exists in `public/` or `dist/`
+3. Verify Worker script doesn't have catch-all routes that interfere
+4. Rebuild and redeploy: `npm run deploy`
+5. Test in incognito/private window to avoid cache issues
+
+### References
+
+- [Cloudflare Workers SPA Routing Docs](https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/)
+- `wrangler.toml` lines 8-11 contain the configuration
+
 ## Architecture
 
 ### Dual-Mode System
@@ -460,7 +556,7 @@ Dashboard shows both regular and weighted ICE:
 - Check browser console for `APP_CONFIG.IS_DEMO` value
 - Verify `demo-data.ts` initializes correctly
 
-When performing git commits or generating commit messages:
+**When performing git commits or generating commit messages:**
 
 1. NEVER automatically add AI attribution signatures like:
    - "🤖 Generated with [Claude Code]"

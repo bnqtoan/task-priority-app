@@ -9,7 +9,6 @@ import { useState, useEffect } from "react";
 import { X, Pause, Play } from "lucide-react";
 import {
   loadGlobalPomodoroSession,
-  getGlobalPomodoroElapsed,
   getGlobalPomodoroRemaining,
   pauseGlobalPomodoro,
   resumeGlobalPomodoro,
@@ -23,7 +22,6 @@ import type { GlobalPomodoroSession } from "../../utils/types";
 
 export function GlobalPomodoroWidget() {
   const [session, setSession] = useState<GlobalPomodoroSession | null>(null);
-  const [elapsed, setElapsed] = useState(0);
   const [remaining, setRemaining] = useState(0);
   const [showPhaseComplete, setShowPhaseComplete] = useState(false);
 
@@ -34,9 +32,7 @@ export function GlobalPomodoroWidget() {
       setSession(currentSession);
 
       if (currentSession && currentSession.isActive) {
-        const newElapsed = getGlobalPomodoroElapsed();
         const newRemaining = getGlobalPomodoroRemaining();
-        setElapsed(newElapsed);
         setRemaining(newRemaining);
 
         // Check if phase is complete (timer reached 0:00)

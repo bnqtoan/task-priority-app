@@ -52,6 +52,10 @@ export const tasks = sqliteTable("tasks", {
   recurringPattern: text("recurring_pattern"), // 'daily' | 'weekly' | 'monthly' | null
   lastCompletedDate: integer("last_completed_date", { mode: "timestamp" }), // for recurring tasks
   streakCount: integer("streak_count").default(0), // consecutive completions
+  deadline: integer("deadline", { mode: "timestamp" }), // hard deadline (null = no deadline)
+
+  // Subtasks (JSON array)
+  subtasks: text("subtasks"), // JSON: [{id: string, text: string, completed: boolean, order: number}]
 
   // Timestamps
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),

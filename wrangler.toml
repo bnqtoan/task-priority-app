@@ -5,8 +5,11 @@ compatibility_flags = ["nodejs_compat"]
 account_id = "5cbaf7492795d0e9eafa26240b14389c"
 
 # Assets (Frontend build output)
+# SPA routing: not_found_handling serves index.html for non-matching routes
+# This enables client-side routing (direct access to /reports, /focus, etc.)
 [assets]
 directory = "./dist"
+not_found_handling = "single-page-application"
 
 # D1 Database
 [[d1_databases]]

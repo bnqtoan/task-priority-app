@@ -9,7 +9,7 @@
  * This is a singleton pattern - only one active Pomodoro session exists at a time.
  */
 
-import type { GlobalPomodoroSession, PomodoroSettings } from "../utils/types";
+import type { GlobalPomodoroSession } from "../utils/types";
 import { loadPomodoroSettings } from "../utils/pomodoro";
 
 const STORAGE_KEY = "global-pomodoro-session";

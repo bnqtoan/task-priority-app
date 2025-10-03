@@ -74,10 +74,11 @@ tasksRouter.get("/", zValidator("query", taskQuerySchema), async (c) => {
       {} as Record<number, typeof entries>,
     );
 
-    // Attach time entries to tasks
+    // Attach time entries to tasks and parse subtasks JSON
     const tasksWithEntries = userTasks.map((task) => ({
       ...task,
       timeEntries: entriesByTask[task.id] || [],
+      subtasks: task.subtasks ? JSON.parse(task.subtasks as string) : [],
     }));
 
     return c.json({ tasks: tasksWithEntries });
@@ -161,7 +162,13 @@ tasksRouter.get("/:id", async (c) => {
       return c.json({ error: "Task not found" }, 404);
     }
 
-    return c.json(task);
+    // Parse subtasks JSON
+    const taskWithSubtasks = {
+      ...task,
+      subtasks: task.subtasks ? JSON.parse(task.subtasks as string) : [],
+    };
+
+    return c.json(taskWithSubtasks);
   } catch (error) {
     console.error("Get task error:", error);
     return c.json({ error: "Failed to fetch task" }, 500);
@@ -217,6 +224,13 @@ tasksRouter.put("/:id", zValidator("json", updateTaskSchema), async (c) => {
       typeof sanitizedData.pauseStartTime === "string"
     ) {
       sanitizedData.pauseStartTime = new Date(sanitizedData.pauseStartTime);
+    }
+    if (sanitizedData.deadline && typeof sanitizedData.deadline === "string") {
+      sanitizedData.deadline = new Date(sanitizedData.deadline);
+    }
+    // Serialize subtasks array to JSON string for database storage
+    if (sanitizedData.subtasks) {
+      sanitizedData.subtasks = JSON.stringify(sanitizedData.subtasks);
     }
 
     const [updatedTask] = await db

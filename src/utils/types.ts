@@ -1,6 +1,14 @@
 // Shared types for frontend and backend
 export type SchedulingWindow = "today" | "this-week" | "this-month" | "someday";
 export type RecurringPattern = "daily" | "weekly" | "monthly" | null;
+export type SortMode = "smart" | "value" | "deadline" | "overdue";
+
+export interface Subtask {
+  id: string;
+  text: string;
+  completed: boolean;
+  order: number;
+}
 
 export interface Task {
   id: number;
@@ -32,6 +40,9 @@ export interface Task {
   recurringPattern?: RecurringPattern; // for recurring tasks
   lastCompletedDate?: Date; // tracks when recurring task was last completed
   streakCount?: number; // consecutive completions for recurring tasks
+  deadline?: Date | null; // hard deadline for task completion
+  // Subtasks
+  subtasks?: Subtask[]; // checklist of subtasks
 }
 
 export interface TimeEntry {
@@ -80,6 +91,8 @@ export interface CreateTaskInput {
   decision: Task["decision"];
   scheduledFor?: SchedulingWindow;
   recurringPattern?: RecurringPattern;
+  deadline?: Date | null;
+  subtasks?: Subtask[];
 }
 
 export interface UpdateTaskInput extends Partial<CreateTaskInput> {
@@ -89,6 +102,8 @@ export interface UpdateTaskInput extends Partial<CreateTaskInput> {
   isPaused?: boolean;
   pausedTime?: number;
   pauseStartTime?: Date | null;
+  deadline?: Date | null;
+  subtasks?: Subtask[];
 }
 
 export interface UpdatePreferencesInput {

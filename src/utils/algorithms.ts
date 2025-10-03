@@ -1,4 +1,5 @@
 import { Task, AIRecommendation } from "./types";
+import { calculateUrgencyMultiplier, daysUntilDeadline } from "./urgency";
 
 export const calculateICE = (task: Task): string => {
   return ((task.impact + task.confidence + task.ease) / 3).toFixed(1);
@@ -88,16 +89,37 @@ export const getDecisionRecommendation = (
     return { decision: "delay", reason: `Medium ROI (${roi.toFixed(2)})` };
   }
 
-  // Method 4: Eisenhower Enhanced
+  // Method 4: Eisenhower Enhanced (with deadline)
   if (selectedMethod === "eisenhower") {
-    const timeBlockFactor = {
-      quick: 3,
-      collaborative: 2,
-      deep: 0,
-      systematic: -1,
-    };
-    const urgency = 10 - confidence + (timeBlockFactor[task.timeBlock] || 0);
     const importance = impact;
+
+    // Calculate urgency based on deadline
+    let urgency: number;
+    if (task.deadline) {
+      const days = daysUntilDeadline(task.deadline);
+      if (days === null) {
+        urgency = 3; // No deadline = low urgency
+      } else if (days < 0) {
+        urgency = 10; // Overdue = critical
+      } else if (days < 1) {
+        urgency = 9; // Due today
+      } else if (days < 3) {
+        urgency = 8; // Due soon
+      } else if (days < 7) {
+        urgency = 6; // Due this week
+      } else {
+        urgency = 4; // Future
+      }
+    } else {
+      // Fallback to time block if no deadline
+      const timeBlockFactor = {
+        quick: 3,
+        collaborative: 2,
+        deep: 0,
+        systematic: -1,
+      };
+      urgency = 10 - confidence + (timeBlockFactor[task.timeBlock] || 0);
+    }
 
     if (importance >= 7 && urgency >= 7) {
       return { decision: "do", reason: "Important & Urgent (Do Now)" };
@@ -188,7 +210,7 @@ export const getDecisionRecommendation = (
     return { decision: "delay", reason: "Medium strategic fit" };
   }
 
-  // Method 8: Hybrid Smart (Default)
+  // Method 8: Hybrid Smart (Default) - with urgency
   if (selectedMethod === "hybrid") {
     const typeWeights = {
       revenue: 1.5,
@@ -202,12 +224,17 @@ export const getDecisionRecommendation = (
     const effortScore = 11 - ease + estimatedTime / 30;
     const roi = valueScore / effortScore;
     const strategicWeight = typeWeights[task.type] || 1.0;
-    const finalScore = roi * 0.4 + valueScore * 0.3 + strategicWeight * 0.3;
+    const urgencyMultiplier = calculateUrgencyMultiplier(task.deadline);
+    const finalScore =
+      (roi * 0.4 + valueScore * 0.3 + strategicWeight * 0.3) *
+      urgencyMultiplier;
 
     if (finalScore >= 3.5 && valueScore >= 6) {
+      const urgencyNote =
+        urgencyMultiplier > 1.0 ? ` (${urgencyMultiplier.toFixed(1)}× urgency)` : "";
       return {
         decision: "do",
-        reason: `Excellent score (${finalScore.toFixed(2)})`,
+        reason: `Excellent score (${finalScore.toFixed(2)})${urgencyNote}`,
       };
     }
     if (finalScore >= 2.5 && effortScore >= 8) {
@@ -229,4 +256,14 @@ export const getDecisionRecommendation = (
   }
 
   return { decision: "do", reason: "Default" };
+};
+
+/**
+ * Calculate final priority score with urgency multiplier
+ * Used for sorting tasks in Dashboard
+ */
+export const calculateFinalPriority = (task: Task): number => {
+  const iceScore = parseFloat(calculateICE(task));
+  const urgencyMultiplier = calculateUrgencyMultiplier(task.deadline);
+  return iceScore * urgencyMultiplier;
 };

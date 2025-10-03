@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+// Subtask schema
+export const subtaskSchema = z.object({
+  id: z.string(),
+  text: z.string().min(1, "Subtask text is required"),
+  completed: z.boolean(),
+  order: z.number().int().min(0),
+});
+
 // Task validation schemas
 export const createTaskSchema = z.object({
   name: z
@@ -25,6 +33,13 @@ export const createTaskSchema = z.object({
     .nullable()
     .optional()
     .transform((val) => (val === "" ? null : val)),
+  deadline: z
+    .string()
+    .or(z.date())
+    .nullable()
+    .optional()
+    .transform((val) => (val ? new Date(val) : null)),
+  subtasks: z.array(subtaskSchema).optional(),
 });
 
 export const updateTaskSchema = createTaskSchema.partial().extend({
@@ -38,6 +53,13 @@ export const updateTaskSchema = createTaskSchema.partial().extend({
   isPaused: z.boolean().optional(),
   pausedTime: z.number().int().min(0).optional(),
   pauseStartTime: z.string().or(z.date()).nullable().optional(),
+  deadline: z
+    .string()
+    .or(z.date())
+    .nullable()
+    .optional()
+    .transform((val) => (val ? new Date(val) : null)),
+  subtasks: z.array(subtaskSchema).optional(),
 });
 
 // User preferences validation

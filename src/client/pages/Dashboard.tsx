@@ -28,6 +28,7 @@ import { ICEWeightsSettings } from "../components/ICEWeightsSettings";
 import { PomodoroSettingsComponent } from "../components/PomodoroSettings";
 import { GlobalPomodoroWidget } from "../components/GlobalPomodoroWidget";
 import { QuickAddFAB } from "../components/QuickAddFAB";
+import { NumberInput } from "../components/NumberInput";
 import {
   calculateICE,
   calculateWeightedICE,
@@ -35,7 +36,16 @@ import {
   getTimeBlockInfo,
   DEFAULT_ICE_WEIGHTS,
 } from "../lib/helpers";
-import { getDecisionRecommendation } from "../../utils/algorithms";
+import {
+  getDecisionRecommendation,
+  calculateFinalPriority,
+} from "../../utils/algorithms";
+import {
+  getUrgencyInfo,
+  formatDeadline,
+  isOverdue,
+  getUrgencyTier,
+} from "../../utils/urgency";
 import {
   loadPomodoroSettings,
   savePomodoroSettings,
@@ -71,6 +81,8 @@ const Dashboard = () => {
     notes: "",
     scheduledFor: "someday",
     recurringPattern: null,
+    deadline: null,
+    subtasks: [],
   });
 
   const [activeTab, setActiveTab] = useState("all");
@@ -78,6 +90,7 @@ const Dashboard = () => {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
+  const [sortMode, setSortMode] = useState<"smart" | "value" | "deadline" | "overdue">("smart");
 
   // Debounced update functionality
   const debounceTimeouts = useRef<{ [key: string]: NodeJS.Timeout }>({});
@@ -155,11 +168,21 @@ const Dashboard = () => {
           api.getOverview(),
         ]);
         setUser(userRes);
-        setTasks(tasksRes);
+
+        // Convert date strings to Date objects for all tasks
+        const tasksWithDates = tasksRes.map(task => ({
+          ...task,
+          deadline: task.deadline ? new Date(task.deadline) : null,
+          completedAt: task.completedAt ? new Date(task.completedAt) : undefined,
+          focusStartedAt: task.focusStartedAt ? new Date(task.focusStartedAt) : undefined,
+          lastCompletedDate: task.lastCompletedDate ? new Date(task.lastCompletedDate) : undefined,
+        }));
+
+        setTasks(tasksWithDates);
         setStats(statsRes);
 
         // Check for active focus session
-        const activeTask = tasksRes.find((t) => t.isInFocus);
+        const activeTask = tasksWithDates.find((t) => t.isInFocus);
         if (activeTask) {
           setFocusTask(activeTask);
           // Don't auto-open modal, just show the floating widget
@@ -281,6 +304,20 @@ const Dashboard = () => {
         : await api.updateTask(id, { [field]: value });
 
       console.log("Task updated successfully:", updatedTask);
+
+      // Convert date strings to Date objects
+      if (updatedTask.deadline && typeof updatedTask.deadline === 'string') {
+        updatedTask.deadline = new Date(updatedTask.deadline);
+      }
+      if (updatedTask.completedAt && typeof updatedTask.completedAt === 'string') {
+        updatedTask.completedAt = new Date(updatedTask.completedAt);
+      }
+      if (updatedTask.focusStartedAt && typeof updatedTask.focusStartedAt === 'string') {
+        updatedTask.focusStartedAt = new Date(updatedTask.focusStartedAt);
+      }
+      if (updatedTask.lastCompletedDate && typeof updatedTask.lastCompletedDate === 'string') {
+        updatedTask.lastCompletedDate = new Date(updatedTask.lastCompletedDate);
+      }
 
       // Only update tasks state if we're not in the middle of debouncing the same field
       if (!skipLocalUpdate) {
@@ -547,10 +584,49 @@ const Dashboard = () => {
       : parseFloat(calculateICE(task));
   };
 
-  const sortedTasks = [...tasks].sort(
-    (a, b) => getTaskScore(b) - getTaskScore(a),
-  );
-  const filteredTasks = searchAndFilterTasks(sortedTasks);
+  // Sort tasks based on selected sort mode
+  const sortedTasks = [...tasks].sort((a, b) => {
+    if (sortMode === "smart") {
+      // Smart: ICE × Urgency Multiplier
+      const priorityA = calculateFinalPriority(a);
+      const priorityB = calculateFinalPriority(b);
+      return priorityB - priorityA;
+    } else if (sortMode === "value") {
+      // Value: Pure ICE score
+      return getTaskScore(b) - getTaskScore(a);
+    } else if (sortMode === "deadline") {
+      // Deadline: Sort by urgency tier, then by deadline date
+      const tierDiff = getUrgencyTier(b.deadline) - getUrgencyTier(a.deadline);
+      if (tierDiff !== 0) return tierDiff;
+
+      // Within same tier, sort by deadline date (earliest first)
+      if (a.deadline && b.deadline) {
+        return a.deadline.getTime() - b.deadline.getTime();
+      }
+      if (a.deadline) return -1;
+      if (b.deadline) return 1;
+      return 0;
+    } else if (sortMode === "overdue") {
+      // Overdue only: Show overdue tasks first, sorted by how overdue
+      const aOverdue = isOverdue(a.deadline);
+      const bOverdue = isOverdue(b.deadline);
+
+      if (aOverdue && !bOverdue) return -1;
+      if (!aOverdue && bOverdue) return 1;
+      if (aOverdue && bOverdue && a.deadline && b.deadline) {
+        return a.deadline.getTime() - b.deadline.getTime(); // Most overdue first
+      }
+      return 0;
+    }
+    return 0;
+  });
+
+  // Filter overdue mode to only show overdue tasks
+  const filteredForMode = sortMode === "overdue"
+    ? sortedTasks.filter(task => isOverdue(task.deadline))
+    : sortedTasks;
+
+  const filteredTasks = searchAndFilterTasks(filteredForMode);
 
   const handleSaveWeights = (newWeights: ICEWeights) => {
     setIceWeights(newWeights);
@@ -1004,18 +1080,16 @@ const Dashboard = () => {
 
           <div>
             <label className="block text-xs text-gray-600 mb-1">Impact</label>
-            <input
-              type="number"
-              min="1"
-              max="10"
+            <NumberInput
               value={newTask.impact}
-              onChange={(e) =>
+              min={1}
+              max={10}
+              onChange={(value) =>
                 setNewTask({
                   ...newTask,
-                  impact: parseInt(e.target.value) || 1,
+                  impact: value,
                 })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             />
           </div>
 
@@ -1023,32 +1097,28 @@ const Dashboard = () => {
             <label className="block text-xs text-gray-600 mb-1">
               Confidence
             </label>
-            <input
-              type="number"
-              min="1"
-              max="10"
+            <NumberInput
               value={newTask.confidence}
-              onChange={(e) =>
+              min={1}
+              max={10}
+              onChange={(value) =>
                 setNewTask({
                   ...newTask,
-                  confidence: parseInt(e.target.value) || 1,
+                  confidence: value,
                 })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             />
           </div>
 
           <div>
             <label className="block text-xs text-gray-600 mb-1">Ease</label>
-            <input
-              type="number"
-              min="1"
-              max="10"
+            <NumberInput
               value={newTask.ease}
-              onChange={(e) =>
-                setNewTask({ ...newTask, ease: parseInt(e.target.value) || 1 })
+              min={1}
+              max={10}
+              onChange={(value) =>
+                setNewTask({ ...newTask, ease: value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             />
           </div>
 
@@ -1093,17 +1163,33 @@ const Dashboard = () => {
             <label className="block text-xs text-gray-600 mb-1">
               Estimated Time (phút)
             </label>
-            <input
-              type="number"
-              min="5"
+            <NumberInput
               value={newTask.estimatedTime}
+              min={5}
+              max={1440}
+              onChange={(value) =>
+                setNewTask({
+                  ...newTask,
+                  estimatedTime: value,
+                })
+              }
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">
+              ⏰ Deadline (Optional)
+            </label>
+            <input
+              type="date"
+              value={newTask.deadline ? newTask.deadline.toISOString().split('T')[0] : ''}
               onChange={(e) =>
                 setNewTask({
                   ...newTask,
-                  estimatedTime: parseInt(e.target.value) || 5,
+                  deadline: e.target.value ? new Date(e.target.value) : null,
                 })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -1277,6 +1363,65 @@ const Dashboard = () => {
               "🎲 Prioritizes based on task type (Revenue > Strategic > Growth)"}
             {selectedMethod === "hybrid" &&
               "🔮 Combines ROI (40%), Value (30%), Strategy (30%) - Most comprehensive"}
+          </p>
+        </div>
+
+        {/* Sort Mode Selector */}
+        <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b-2 border-amber-200">
+          <label className="block text-sm font-bold text-gray-800 mb-2">
+            🎯 Priority Sorting Mode:
+          </label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <button
+              onClick={() => setSortMode("smart")}
+              className={`px-4 py-3 rounded-lg font-semibold text-sm transition-all ${
+                sortMode === "smart"
+                  ? "bg-blue-600 text-white shadow-lg scale-105"
+                  : "bg-white text-gray-700 hover:bg-blue-50 border-2 border-blue-200"
+              }`}
+            >
+              🎯 Smart
+              {sortMode === "smart" && <div className="text-xs mt-1">ICE × Urgency</div>}
+            </button>
+            <button
+              onClick={() => setSortMode("value")}
+              className={`px-4 py-3 rounded-lg font-semibold text-sm transition-all ${
+                sortMode === "value"
+                  ? "bg-purple-600 text-white shadow-lg scale-105"
+                  : "bg-white text-gray-700 hover:bg-purple-50 border-2 border-purple-200"
+              }`}
+            >
+              💎 Value
+              {sortMode === "value" && <div className="text-xs mt-1">Pure ICE</div>}
+            </button>
+            <button
+              onClick={() => setSortMode("deadline")}
+              className={`px-4 py-3 rounded-lg font-semibold text-sm transition-all ${
+                sortMode === "deadline"
+                  ? "bg-orange-600 text-white shadow-lg scale-105"
+                  : "bg-white text-gray-700 hover:bg-orange-50 border-2 border-orange-200"
+              }`}
+            >
+              ⏰ Deadline
+              {sortMode === "deadline" && <div className="text-xs mt-1">By Due Date</div>}
+            </button>
+            <button
+              onClick={() => setSortMode("overdue")}
+              className={`px-4 py-3 rounded-lg font-semibold text-sm transition-all ${
+                sortMode === "overdue"
+                  ? "bg-red-600 text-white shadow-lg scale-105"
+                  : "bg-white text-gray-700 hover:bg-red-50 border-2 border-red-200"
+              }`}
+            >
+              🔥 Overdue
+              {sortMode === "overdue" && <div className="text-xs mt-1">Only Overdue</div>}
+            </button>
+          </div>
+          <p className="text-xs text-gray-700 mt-2 font-medium">
+            {sortMode === "smart" && "🎯 Combines value (ICE score) with deadline urgency (1-3× multiplier)"}
+            {sortMode === "value" && "💎 Pure ICE scoring - no deadline influence"}
+            {sortMode === "deadline" && "⏰ Sorted by deadline urgency, then by due date"}
+            {sortMode === "overdue" && "🔥 Shows only overdue tasks, most overdue first"}
           </p>
         </div>
 
@@ -1615,19 +1760,12 @@ const Dashboard = () => {
                                   <label className="block text-xs font-medium text-gray-600 mb-1">
                                     Impact (1-10)
                                   </label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="10"
-                                    data-task-id={task.id}
-                                    data-field="impact"
+                                  <NumberInput
                                     value={task.impact}
-                                    onChange={(e) =>
-                                      updateTask(
-                                        task.id,
-                                        "impact",
-                                        parseInt(e.target.value) || 1,
-                                      )
+                                    min={1}
+                                    max={10}
+                                    onChange={(value) =>
+                                      debouncedUpdateTask(task.id, "impact", value)
                                     }
                                     onFocus={() => {
                                       activeInputRef.current = { taskId: task.id, field: "impact" };
@@ -1635,26 +1773,20 @@ const Dashboard = () => {
                                     onBlur={() => {
                                       activeInputRef.current = null;
                                     }}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    data-task-id={task.id}
+                                    data-field="impact"
                                   />
                                 </div>
                                 <div>
                                   <label className="block text-xs font-medium text-gray-600 mb-1">
                                     Confidence (1-10)
                                   </label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="10"
-                                    data-task-id={task.id}
-                                    data-field="confidence"
+                                  <NumberInput
                                     value={task.confidence}
-                                    onChange={(e) =>
-                                      updateTask(
-                                        task.id,
-                                        "confidence",
-                                        parseInt(e.target.value) || 1,
-                                      )
+                                    min={1}
+                                    max={10}
+                                    onChange={(value) =>
+                                      debouncedUpdateTask(task.id, "confidence", value)
                                     }
                                     onFocus={() => {
                                       activeInputRef.current = { taskId: task.id, field: "confidence" };
@@ -1662,26 +1794,20 @@ const Dashboard = () => {
                                     onBlur={() => {
                                       activeInputRef.current = null;
                                     }}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    data-task-id={task.id}
+                                    data-field="confidence"
                                   />
                                 </div>
                                 <div>
                                   <label className="block text-xs font-medium text-gray-600 mb-1">
                                     Ease (1-10)
                                   </label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="10"
-                                    data-task-id={task.id}
-                                    data-field="ease"
+                                  <NumberInput
                                     value={task.ease}
-                                    onChange={(e) =>
-                                      updateTask(
-                                        task.id,
-                                        "ease",
-                                        parseInt(e.target.value) || 1,
-                                      )
+                                    min={1}
+                                    max={10}
+                                    onChange={(value) =>
+                                      debouncedUpdateTask(task.id, "ease", value)
                                     }
                                     onFocus={() => {
                                       activeInputRef.current = { taskId: task.id, field: "ease" };
@@ -1689,7 +1815,8 @@ const Dashboard = () => {
                                     onBlur={() => {
                                       activeInputRef.current = null;
                                     }}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    data-task-id={task.id}
+                                    data-field="ease"
                                   />
                                 </div>
                               </div>
@@ -1758,18 +1885,12 @@ const Dashboard = () => {
                                   <label className="block text-xs font-medium text-gray-600 mb-1">
                                     Estimated Time (minutes)
                                   </label>
-                                  <input
-                                    type="number"
-                                    min="5"
-                                    data-task-id={task.id}
-                                    data-field="estimatedTime"
+                                  <NumberInput
                                     value={task.estimatedTime}
-                                    onChange={(e) =>
-                                      updateTask(
-                                        task.id,
-                                        "estimatedTime",
-                                        parseInt(e.target.value) || 5,
-                                      )
+                                    min={5}
+                                    max={1440}
+                                    onChange={(value) =>
+                                      debouncedUpdateTask(task.id, "estimatedTime", value)
                                     }
                                     onFocus={() => {
                                       activeInputRef.current = { taskId: task.id, field: "estimatedTime" };
@@ -1777,7 +1898,8 @@ const Dashboard = () => {
                                     onBlur={() => {
                                       activeInputRef.current = null;
                                     }}
-                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    data-task-id={task.id}
+                                    data-field="estimatedTime"
                                   />
                                 </div>
                               </div>
@@ -1878,6 +2000,23 @@ const Dashboard = () => {
                                     </option>
                                     <option value="someday">💭 Someday</option>
                                   </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                                    ⏰ Deadline (Optional)
+                                  </label>
+                                  <input
+                                    type="date"
+                                    value={task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : ''}
+                                    onChange={(e) =>
+                                      updateTask(
+                                        task.id,
+                                        "deadline",
+                                        e.target.value ? new Date(e.target.value) : null,
+                                      )
+                                    }
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                  />
                                 </div>
                                 <div>
                                   <label className="block text-xs font-medium text-gray-600 mb-1">

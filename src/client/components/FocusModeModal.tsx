@@ -12,7 +12,6 @@ import { getRandomFocusQuote } from "../../utils/focus-quotes";
 import {
   loadPomodoroSettings,
   getPomodoroModeInfo,
-  getPomodoroModeDuration,
   getPomodoroCompletionMessage,
   playPomodoroSound,
   showPomodoroNotification,
@@ -26,8 +25,6 @@ import {
 } from "../../utils/timer-modes";
 import {
   loadGlobalPomodoroSession,
-  getGlobalPomodoroElapsed,
-  getGlobalPomodoroRemaining,
   pauseGlobalPomodoro,
   resumeGlobalPomodoro,
   completeGlobalPomodoroPhase,
