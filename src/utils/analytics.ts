@@ -13,6 +13,16 @@ import type {
 } from "./types";
 
 /**
+ * Normalize date values to ensure consistent Date objects
+ * Handles API responses where dates may be strings or numbers
+ */
+function ensureDate(value: Date | string | number | null | undefined): Date {
+  if (!value) return new Date();
+  if (value instanceof Date) return value;
+  return new Date(value);
+}
+
+/**
  * Calculate simple ICE score
  */
 function calculateICEScore(
@@ -93,15 +103,41 @@ export function getDateRangeForPreset(preset: TimeRangePreset): DateRange {
 
 /**
  * Filter tasks by date range
+ * Includes tasks that were completed OR have time entries within the range
  */
 export function filterTasksByDateRange(
   tasks: Task[],
   dateRange: DateRange,
 ): Task[] {
   return tasks.filter((task) => {
-    if (!task.completedAt) return false;
-    const completedDate = new Date(task.completedAt);
-    return completedDate >= dateRange.start && completedDate <= dateRange.end;
+    // Include if task was completed in the range
+    if (task.completedAt) {
+      const completedDate = ensureDate(task.completedAt);
+      if (completedDate >= dateRange.start && completedDate <= dateRange.end) {
+        return true;
+      }
+    }
+
+    // Include if task has time entries in the range
+    if (task.timeEntries && task.timeEntries.length > 0) {
+      const hasEntriesInRange = task.timeEntries.some((entry) => {
+        const entryDate = ensureDate(entry.startTime);
+        return entryDate >= dateRange.start && entryDate <= dateRange.end;
+      });
+      if (hasEntriesInRange) {
+        return true;
+      }
+    }
+
+    // Include if task has actualTime and was created/updated in range (fallback)
+    if (task.actualTime && task.actualTime > 0) {
+      const taskDate = ensureDate(task.updatedAt || task.createdAt);
+      if (taskDate >= dateRange.start && taskDate <= dateRange.end) {
+        return true;
+      }
+    }
+
+    return false;
   });
 }
 
@@ -127,28 +163,10 @@ export function getTimeEntriesForDateRange(
     // If task has time entries, use them
     if (task.timeEntries && task.timeEntries.length > 0) {
       const filteredEntries = task.timeEntries.filter((entry) => {
-        const entryDate = new Date(entry.startTime);
+        const entryDate = ensureDate(entry.startTime);
         return entryDate >= dateRange.start && entryDate <= dateRange.end;
       });
       allEntries.push(...filteredEntries);
-    }
-    // Fallback: If task has actualTime but no timeEntries, create a synthetic entry
-    else if (task.actualTime && task.actualTime > 0) {
-      // Use task's updatedAt or createdAt as the entry date
-      const entryDate = task.updatedAt || task.createdAt || new Date();
-      const entryDateObj = new Date(entryDate);
-
-      // Only include if within date range
-      if (entryDateObj >= dateRange.start && entryDateObj <= dateRange.end) {
-        allEntries.push({
-          id: `synthetic-${task.id}`,
-          taskId: task.id,
-          startTime: entryDateObj,
-          endTime: new Date(entryDateObj.getTime() + task.actualTime * 60000),
-          duration: task.actualTime,
-          type: "regular",
-        });
-      }
     }
   });
 
@@ -198,25 +216,27 @@ export function calculateTimeStats(
 }
 
 /**
- * Group time by category
+ * Group time by category using actual time entries
  */
 export function groupTimeByCategory<K extends keyof Task>(
   tasks: Task[],
   dateRange: DateRange,
   categoryKey: K,
 ): TimeByCategory[] {
-  const filteredTasks = filterTasksByDateRange(tasks, dateRange);
-  const categoryMap = new Map<string, { minutes: number; taskCount: number }>();
+  const categoryMap = new Map<string, { minutes: number; taskCount: Set<number> }>();
+  const timeEntries = getTimeEntriesForDateRange(tasks, dateRange);
 
-  filteredTasks.forEach((task) => {
-    const category = String(task[categoryKey]);
-    const minutes = task.actualTime || 0;
-
-    const existing = categoryMap.get(category) || { minutes: 0, taskCount: 0 };
-    categoryMap.set(category, {
-      minutes: existing.minutes + minutes,
-      taskCount: existing.taskCount + 1,
-    });
+  // Map time entries to categories
+  timeEntries.forEach((entry) => {
+    const task = tasks.find((t) => t.id === entry.taskId);
+    if (task) {
+      const category = String(task[categoryKey]);
+      const existing = categoryMap.get(category) || { minutes: 0, taskCount: new Set<number>() };
+      categoryMap.set(category, {
+        minutes: existing.minutes + (entry.duration || 0),
+        taskCount: existing.taskCount.add(task.id),
+      });
+    }
   });
 
   const totalMinutes = Array.from(categoryMap.values()).reduce(
@@ -229,7 +249,7 @@ export function groupTimeByCategory<K extends keyof Task>(
       category,
       minutes: data.minutes,
       percentage: totalMinutes > 0 ? (data.minutes / totalMinutes) * 100 : 0,
-      taskCount: data.taskCount,
+      taskCount: data.taskCount.size,
     }))
     .sort((a, b) => b.minutes - a.minutes);
 }
@@ -257,7 +277,7 @@ export function generateDailyTimeData(
   // Fill in actual data
   const timeEntries = getTimeEntriesForDateRange(tasks, dateRange);
   timeEntries.forEach((entry) => {
-    const dateStr = new Date(entry.startTime).toISOString().split("T")[0];
+    const dateStr = ensureDate(entry.startTime).toISOString().split("T")[0];
     const existing = dailyMap.get(dateStr);
     if (existing) {
       existing.minutes += entry.duration || 0;
@@ -270,7 +290,7 @@ export function generateDailyTimeData(
   const filteredTasks = filterTasksByDateRange(tasks, dateRange);
   filteredTasks.forEach((task) => {
     if (task.completedAt) {
-      const dateStr = new Date(task.completedAt).toISOString().split("T")[0];
+      const dateStr = ensureDate(task.completedAt).toISOString().split("T")[0];
       const existing = dailyMap.get(dateStr);
       if (existing) {
         existing.completedTasks += 1;
@@ -304,7 +324,7 @@ export function generateHourlyTimeData(
 
   const timeEntries = getTimeEntriesForDateRange(tasks, dateRange);
   timeEntries.forEach((entry) => {
-    const hour = new Date(entry.startTime).getHours();
+    const hour = ensureDate(entry.startTime).getHours();
     hourlyMap.set(hour, (hourlyMap.get(hour) || 0) + (entry.duration || 0));
   });
 
@@ -318,31 +338,43 @@ export function generateHourlyTimeData(
 }
 
 /**
- * Get top tasks by time spent
+ * Get top tasks by time spent using actual time entries in date range
  */
 export function getTopTasks(
   tasks: Task[],
   dateRange: DateRange,
   limit: number = 10,
 ): TopTask[] {
-  const filteredTasks = filterTasksByDateRange(tasks, dateRange);
-  const totalMinutes = filteredTasks.reduce(
-    (sum, task) => sum + (task.actualTime || 0),
-    0,
-  );
+  const timeEntries = getTimeEntriesForDateRange(tasks, dateRange);
+  const taskTimeMap = new Map<number, number>();
 
-  return filteredTasks
-    .map((task) => ({
-      id: task.id,
-      name: task.name,
-      minutes: task.actualTime || 0,
-      percentage:
-        totalMinutes > 0 ? ((task.actualTime || 0) / totalMinutes) * 100 : 0,
-      type: task.type,
-      iceScore: calculateICEScore(task.impact, task.confidence, task.ease),
-    }))
+  // Calculate time per task from entries
+  timeEntries.forEach((entry) => {
+    const existing = taskTimeMap.get(entry.taskId) || 0;
+    taskTimeMap.set(entry.taskId, existing + (entry.duration || 0));
+  });
+
+  const totalMinutes = Array.from(taskTimeMap.values()).reduce((sum, m) => sum + m, 0);
+
+  // Map to task details
+  const topTasksData = Array.from(taskTimeMap.entries())
+    .map(([taskId, minutes]) => {
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return null;
+      return {
+        id: task.id,
+        name: task.name,
+        minutes,
+        percentage: totalMinutes > 0 ? (minutes / totalMinutes) * 100 : 0,
+        type: task.type,
+        iceScore: calculateICEScore(task.impact, task.confidence, task.ease),
+      };
+    })
+    .filter((t): t is TopTask => t !== null)
     .sort((a, b) => b.minutes - a.minutes)
     .slice(0, limit);
+
+  return topTasksData;
 }
 
 /**
@@ -404,11 +436,13 @@ export function calculateProductivityMetrics(
   const pomodoroCompletionRate =
     expectedPomodoros > 0 ? timeStats.pomodoros / expectedPomodoros : 1;
 
-  // Deep work ratio
-  const filteredTasks = filterTasksByDateRange(tasks, dateRange);
-  const deepWorkMinutes = filteredTasks
-    .filter((t) => t.timeBlock === "deep")
-    .reduce((sum, t) => sum + (t.actualTime || 0), 0);
+  // Deep work ratio using time entries
+  const deepWorkMinutes = timeEntries
+    .filter((entry) => {
+      const task = tasks.find((t) => t.id === entry.taskId);
+      return task?.timeBlock === "deep";
+    })
+    .reduce((sum, e) => sum + (e.duration || 0), 0);
   const deepWorkRatio =
     timeStats.totalMinutes > 0 ? deepWorkMinutes / timeStats.totalMinutes : 0;
 
@@ -544,12 +578,12 @@ export function generateEndOfDayInsights(
   // Completion momentum
   const completedToday = tasks.filter((t) => {
     if (!t.completedAt) return false;
-    const completedDate = new Date(t.completedAt);
+    const completedDate = ensureDate(t.completedAt);
     return completedDate >= today && completedDate < tomorrow;
   });
 
   const startedToday = tasks.filter((t) => {
-    const createdDate = new Date(t.createdAt);
+    const createdDate = ensureDate(t.createdAt);
     return createdDate >= today && createdDate < tomorrow;
   });
 
@@ -600,7 +634,7 @@ export function generateEndOfDayInsights(
 
   const deepWorkDuringPeak = deepWorkEntries
     .filter((e) => {
-      const hour = new Date(e.startTime).getHours();
+      const hour = ensureDate(e.startTime).getHours();
       return peakHours.includes(hour);
     })
     .reduce((sum, e) => sum + (e.duration || 0), 0);

@@ -79,6 +79,14 @@ tasksRouter.get("/", zValidator("query", taskQuerySchema), async (c) => {
       ...task,
       timeEntries: entriesByTask[task.id] || [],
       subtasks: task.subtasks ? JSON.parse(task.subtasks as string) : [],
+      // Convert date strings to Date objects for frontend compatibility
+      deadline: task.deadline ? new Date(task.deadline) : null,
+      completedAt: task.completedAt ? new Date(task.completedAt) : null,
+      focusStartedAt: task.focusStartedAt ? new Date(task.focusStartedAt) : null,
+      pauseStartTime: task.pauseStartTime ? new Date(task.pauseStartTime) : null,
+      lastCompletedDate: task.lastCompletedDate ? new Date(task.lastCompletedDate) : null,
+      createdAt: new Date(task.createdAt),
+      updatedAt: new Date(task.updatedAt),
     }));
 
     return c.json({ tasks: tasksWithEntries });
@@ -168,10 +176,17 @@ tasksRouter.get("/:id", async (c) => {
       return c.json({ error: "Task not found" }, 404);
     }
 
-    // Parse subtasks JSON
+    // Parse subtasks JSON and convert date strings to Date objects
     const taskWithSubtasks = {
       ...task,
       subtasks: task.subtasks ? JSON.parse(task.subtasks as string) : [],
+      deadline: task.deadline ? new Date(task.deadline) : null,
+      completedAt: task.completedAt ? new Date(task.completedAt) : null,
+      focusStartedAt: task.focusStartedAt ? new Date(task.focusStartedAt) : null,
+      pauseStartTime: task.pauseStartTime ? new Date(task.pauseStartTime) : null,
+      lastCompletedDate: task.lastCompletedDate ? new Date(task.lastCompletedDate) : null,
+      createdAt: new Date(task.createdAt),
+      updatedAt: new Date(task.updatedAt),
     };
 
     return c.json(taskWithSubtasks);
