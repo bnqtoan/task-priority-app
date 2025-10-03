@@ -19,6 +19,20 @@ const tasksRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 // Apply middleware to all task routes
 tasksRouter.use("*", accessMiddleware);
 
+// Helper function to convert date strings to Date objects
+function convertTaskDates(task: any) {
+  return {
+    ...task,
+    deadline: task.deadline ? new Date(task.deadline) : null,
+    completedAt: task.completedAt ? new Date(task.completedAt) : null,
+    focusStartedAt: task.focusStartedAt ? new Date(task.focusStartedAt) : null,
+    pauseStartTime: task.pauseStartTime ? new Date(task.pauseStartTime) : null,
+    lastCompletedDate: task.lastCompletedDate ? new Date(task.lastCompletedDate) : null,
+    createdAt: task.createdAt ? new Date(task.createdAt) : new Date(),
+    updatedAt: task.updatedAt ? new Date(task.updatedAt) : new Date(),
+  };
+}
+
 // GET /api/tasks - List all tasks for user
 tasksRouter.get("/", zValidator("query", taskQuerySchema), async (c) => {
   // For demo mode, return empty array since tasks are stored in localStorage
@@ -138,7 +152,13 @@ tasksRouter.post("/", zValidator("json", createTaskSchema), async (c) => {
       } as any)
       .returning();
 
-    return c.json({ task: newTask }, 201);
+    // Parse subtasks back and convert dates
+    const taskWithParsedData = {
+      ...newTask,
+      subtasks: newTask.subtasks ? JSON.parse(newTask.subtasks as string) : [],
+    };
+
+    return c.json({ task: convertTaskDates(taskWithParsedData) }, 201);
   } catch (error) {
     console.error("Create task error:", error);
     return c.json({ error: "Failed to create task" }, 500);
@@ -267,7 +287,13 @@ tasksRouter.put("/:id", zValidator("json", updateTaskSchema), async (c) => {
       return c.json({ error: "Task not found" }, 404);
     }
 
-    return c.json({ task: updatedTask });
+    // Parse subtasks back from JSON string and convert dates
+    const taskWithParsedData = {
+      ...updatedTask,
+      subtasks: updatedTask.subtasks ? JSON.parse(updatedTask.subtasks as string) : [],
+    };
+
+    return c.json({ task: convertTaskDates(taskWithParsedData) });
   } catch (error) {
     console.error("Update task error:", error);
     return c.json({ error: "Failed to update task" }, 500);
@@ -352,7 +378,7 @@ tasksRouter.patch("/:id/complete", async (c) => {
       return c.json({ error: "Task not found" }, 404);
     }
 
-    return c.json({ task: completedTask });
+    return c.json({ task: convertTaskDates(completedTask) });
   } catch (error) {
     console.error("Complete task error:", error);
     return c.json({ error: "Failed to complete task" }, 500);
@@ -455,7 +481,7 @@ tasksRouter.patch("/:id/focus/start", async (c) => {
       return c.json({ error: "Task not found" }, 404);
     }
 
-    return c.json({ task: updatedTask });
+    return c.json({ task: convertTaskDates(updatedTask) });
   } catch (error) {
     console.error("Start focus session error:", error);
     return c.json({ error: "Failed to start focus session" }, 500);
@@ -526,7 +552,7 @@ tasksRouter.patch("/:id/focus/end", async (c) => {
       .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
       .returning();
 
-    return c.json({ task: updatedTask });
+    return c.json({ task: convertTaskDates(updatedTask) });
   } catch (error) {
     console.error("End focus session error:", error);
     return c.json({ error: "Failed to end focus session" }, 500);
@@ -593,7 +619,7 @@ tasksRouter.post("/:id/time", async (c) => {
       .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
       .returning();
 
-    return c.json({ task: updatedTask });
+    return c.json({ task: convertTaskDates(updatedTask) });
   } catch (error) {
     console.error("Add time entry error:", error);
     return c.json({ error: "Failed to add time entry" }, 500);
