@@ -159,8 +159,14 @@ statsRouter.get(
       const recommendations: TaskRecommendations = {};
 
       userTasks.forEach((task) => {
+        // Parse subtasks JSON if present
+        const taskWithSubtasks = {
+          ...task,
+          subtasks: task.subtasks ? JSON.parse(task.subtasks as string) : []
+        };
+
         // Type assertion for database task to match algorithm interface
-        const taskForAlgorithm = task as Task;
+        const taskForAlgorithm = taskWithSubtasks as Task;
         const recommendation = getDecisionRecommendation(
           taskForAlgorithm,
           method,

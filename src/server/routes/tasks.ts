@@ -113,15 +113,21 @@ tasksRouter.post("/", zValidator("json", createTaskSchema), async (c) => {
   }
 
   try {
+    // Serialize subtasks if present
+    const dataToInsert: any = { ...taskData };
+    if (dataToInsert.subtasks) {
+      dataToInsert.subtasks = JSON.stringify(dataToInsert.subtasks);
+    }
+
     const [newTask] = await db
       .insert(tasks)
       .values({
-        ...taskData,
+        ...dataToInsert,
         userId: user.id,
         status: "active",
         createdAt: new Date(),
         updatedAt: new Date(),
-      })
+      } as any)
       .returning();
 
     return c.json({ task: newTask }, 201);

@@ -41,8 +41,6 @@ import {
   calculateFinalPriority,
 } from "../../utils/algorithms";
 import {
-  getUrgencyInfo,
-  formatDeadline,
   isOverdue,
   getUrgencyTier,
 } from "../../utils/urgency";
