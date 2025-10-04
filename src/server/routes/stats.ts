@@ -93,7 +93,7 @@ statsRouter.get("/overview", async (c) => {
     let totalTime = 0;
 
     userTasks.forEach((task) => {
-      const time = task.estimatedTime || 0;
+      const time = task.actualTime || 0;
       totalTime += time;
 
       // Decision stats

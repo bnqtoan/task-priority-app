@@ -78,11 +78,17 @@ tasksRouter.get("/", zValidator("query", taskQuerySchema), async (c) => {
             .all()
         : [];
 
-    // Group time entries by task
+    // Group time entries by task and convert dates
     const entriesByTask = entries.reduce(
       (acc, entry) => {
         if (!acc[entry.taskId]) acc[entry.taskId] = [];
-        acc[entry.taskId].push(entry);
+        acc[entry.taskId].push({
+          ...entry,
+          startTime: new Date(entry.startTime),
+          endTime: entry.endTime ? new Date(entry.endTime) : undefined,
+          createdAt: new Date(entry.createdAt),
+          updatedAt: new Date(entry.updatedAt),
+        });
         return acc;
       },
       {} as Record<number, typeof entries>,
