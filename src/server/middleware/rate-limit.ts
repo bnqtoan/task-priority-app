@@ -121,7 +121,5 @@ class SimpleRateLimiter {
 // Export for testing
 export const simpleRateLimiter = new SimpleRateLimiter();
 
-// Cleanup every 5 minutes
-if (typeof setInterval !== "undefined") {
-  setInterval(() => simpleRateLimiter.cleanup(), 5 * 60 * 1000);
-}
+// Note: setInterval is not allowed in Workers global scope
+// Cleanup will happen on each request instead (see rateLimitMiddleware)
