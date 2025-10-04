@@ -20,11 +20,12 @@ migrations_dir = "src/db/migrations"
 
 # Rate Limiting
 # Note: Create rate limiter with: wrangler rate-limit create api-rate-limit --limit 1000 --period 3600
-[[unsafe.bindings]]
-name = "RATE_LIMITER"
-type = "ratelimit"
-namespace_id = "api-rate-limit"
-simple = { limit = 1000, period = 3600 }
+# Temporarily disabled - uncomment after creating the rate limiter namespace
+# [[unsafe.bindings]]
+# name = "RATE_LIMITER"
+# type = "ratelimit"
+# namespace_id = "api-rate-limit"
+# simple = { limit = 1000, period = 3600 }
 
 # Variables (non-secret)
 [vars]
