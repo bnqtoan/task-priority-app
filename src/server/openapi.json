@@ -1,0 +1,852 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Task Priority App API",
+    "version": "1.0.0",
+    "description": "A comprehensive task management API with ICE scoring, 4D decision framework, time tracking, and AI-powered recommendations. Supports dual authentication: Cloudflare Zero Trust for web UI and API keys for programmatic access.",
+    "contact": {
+      "name": "API Support",
+      "url": "https://github.com/yourusername/task-priority-app"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8787",
+      "description": "Development server"
+    },
+    {
+      "url": "https://your-app.workers.dev",
+      "description": "Production server"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    },
+    {
+      "CloudflareAccess": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API Key",
+        "description": "API key authentication. Format: `task_live_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX`"
+      },
+      "CloudflareAccess": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "CF-Access-Authenticated-User-Email",
+        "description": "Cloudflare Zero Trust authentication (automatically added by Cloudflare Access)"
+      }
+    },
+    "schemas": {
+      "Task": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "userId": { "type": "integer" },
+          "name": { "type": "string" },
+          "notes": { "type": "string", "nullable": true },
+          "impact": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "confidence": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "ease": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "type": {
+            "type": "string",
+            "enum": ["revenue", "growth", "operations", "strategic", "personal"]
+          },
+          "timeBlock": {
+            "type": "string",
+            "enum": ["deep", "collaborative", "quick", "systematic"]
+          },
+          "estimatedTime": { "type": "integer", "description": "In minutes" },
+          "decision": {
+            "type": "string",
+            "enum": ["do", "delegate", "delay", "delete"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "completed", "archived"],
+            "default": "active"
+          },
+          "actualTime": { "type": "integer", "default": 0, "description": "Total time spent in minutes" },
+          "isInFocus": { "type": "boolean", "default": false },
+          "focusStartedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "targetDuration": { "type": "integer", "nullable": true, "description": "Countdown timer target in minutes" },
+          "isPaused": { "type": "boolean", "default": false },
+          "pausedTime": { "type": "integer", "default": 0, "description": "Accumulated pause time in seconds" },
+          "pauseStartTime": { "type": "string", "format": "date-time", "nullable": true },
+          "scheduledFor": {
+            "type": "string",
+            "enum": ["today", "this-week", "this-month", "someday"],
+            "nullable": true
+          },
+          "recurringPattern": {
+            "type": "string",
+            "enum": ["daily", "weekly", "monthly"],
+            "nullable": true
+          },
+          "lastCompletedDate": { "type": "string", "format": "date-time", "nullable": true },
+          "streakCount": { "type": "integer", "default": 0 },
+          "deadline": { "type": "string", "format": "date-time", "nullable": true },
+          "subtasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "text": { "type": "string" },
+                "completed": { "type": "boolean" },
+                "order": { "type": "integer" }
+              }
+            }
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "completedAt": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "CreateTask": {
+        "type": "object",
+        "required": ["name", "impact", "confidence", "ease", "type", "timeBlock", "estimatedTime", "decision"],
+        "properties": {
+          "name": { "type": "string" },
+          "notes": { "type": "string" },
+          "impact": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "confidence": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "ease": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "type": { "type": "string", "enum": ["revenue", "growth", "operations", "strategic", "personal"] },
+          "timeBlock": { "type": "string", "enum": ["deep", "collaborative", "quick", "systematic"] },
+          "estimatedTime": { "type": "integer" },
+          "decision": { "type": "string", "enum": ["do", "delegate", "delay", "delete"] },
+          "scheduledFor": { "type": "string", "enum": ["today", "this-week", "this-month", "someday"] },
+          "recurringPattern": { "type": "string", "enum": ["daily", "weekly", "monthly"], "nullable": true },
+          "deadline": { "type": "string", "format": "date-time", "nullable": true },
+          "subtasks": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "ApiKey": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "prefix": { "type": "string", "description": "First 8 characters for identification" },
+          "key": { "type": "string", "description": "Full key (only returned on creation)" },
+          "lastUsedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "requestCount": { "type": "integer", "default": 0 },
+          "expiresAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateApiKey": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "expiresInDays": { "type": "integer", "minimum": 1, "maximum": 365, "description": "Optional expiration in days" }
+        }
+      },
+      "OverviewStats": {
+        "type": "object",
+        "properties": {
+          "decisions": {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "object",
+                "properties": {
+                  "count": { "type": "integer" },
+                  "time": { "type": "integer", "description": "In minutes" }
+                }
+              },
+              "delegate": {
+                "type": "object",
+                "properties": {
+                  "count": { "type": "integer" },
+                  "time": { "type": "integer", "description": "In minutes" }
+                }
+              },
+              "delay": {
+                "type": "object",
+                "properties": {
+                  "count": { "type": "integer" },
+                  "time": { "type": "integer", "description": "In minutes" }
+                }
+              },
+              "delete": {
+                "type": "object",
+                "properties": {
+                  "count": { "type": "integer" },
+                  "time": { "type": "integer", "description": "In minutes" }
+                }
+              }
+            }
+          },
+          "timeBlocks": {
+            "type": "object",
+            "properties": {
+              "deep": {
+                "type": "object",
+                "properties": {
+                  "count": { "type": "integer" },
+                  "time": { "type": "integer", "description": "In minutes" }
+                }
+              },
+              "collaborative": {
+                "type": "object",
+                "properties": {
+                  "count": { "type": "integer" },
+                  "time": { "type": "integer", "description": "In minutes" }
+                }
+              },
+              "quick": {
+                "type": "object",
+                "properties": {
+                  "count": { "type": "integer" },
+                  "time": { "type": "integer", "description": "In minutes" }
+                }
+              },
+              "systematic": {
+                "type": "object",
+                "properties": {
+                  "count": { "type": "integer" },
+                  "time": { "type": "integer", "description": "In minutes" }
+                }
+              }
+            }
+          },
+          "types": {
+            "type": "object",
+            "properties": {
+              "revenue": {
+                "type": "object",
+                "properties": {
+                  "count": { "type": "integer" },
+                  "time": { "type": "integer", "description": "In minutes" }
+                }
+              },
+              "growth": {
+                "type": "object",
+                "properties": {
+                  "count": { "type": "integer" },
+                  "time": { "type": "integer", "description": "In minutes" }
+                }
+              },
+              "operations": {
+                "type": "object",
+                "properties": {
+                  "count": { "type": "integer" },
+                  "time": { "type": "integer", "description": "In minutes" }
+                }
+              },
+              "strategic": {
+                "type": "object",
+                "properties": {
+                  "count": { "type": "integer" },
+                  "time": { "type": "integer", "description": "In minutes" }
+                }
+              },
+              "personal": {
+                "type": "object",
+                "properties": {
+                  "count": { "type": "integer" },
+                  "time": { "type": "integer", "description": "In minutes" }
+                }
+              }
+            }
+          },
+          "totalTasks": { "type": "integer" },
+          "totalTime": { "type": "integer", "description": "In minutes" }
+        }
+      },
+      "TaskRecommendations": {
+        "type": "object",
+        "description": "Map of task IDs to their AI recommendations",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "decision": {
+              "type": "string",
+              "enum": ["do", "delegate", "delay", "delete"]
+            },
+            "reason": { "type": "string" }
+          }
+        }
+      },
+      "Note": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "userId": { "type": "integer" },
+          "taskId": { "type": "integer", "nullable": true },
+          "title": { "type": "string" },
+          "content": { "type": "string", "description": "Markdown format" },
+          "category": {
+            "type": "string",
+            "enum": ["daily-log", "task-note", "reflection", "idea", "meeting"],
+            "default": "task-note"
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "metadata": { "type": "object" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "details": { "type": "object" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Health check",
+        "description": "Check if the API is running",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "API is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "timestamp": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks": {
+      "get": {
+        "summary": "List all tasks",
+        "description": "Retrieve all tasks for the authenticated user",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["active", "completed", "archived"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tasks": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Task" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a task",
+        "description": "Create a new task",
+        "tags": ["Tasks"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateTask" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Task created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task": { "$ref": "#/components/schemas/Task" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}": {
+      "get": {
+        "summary": "Get a task",
+        "description": "Retrieve a specific task by ID",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task": { "$ref": "#/components/schemas/Task" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a task",
+        "description": "Update specific fields of a task",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "status": { "type": "string", "enum": ["active", "completed", "archived"] },
+                  "impact": { "type": "integer", "minimum": 1, "maximum": 10 },
+                  "confidence": { "type": "integer", "minimum": 1, "maximum": 10 },
+                  "ease": { "type": "integer", "minimum": 1, "maximum": 10 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task": { "$ref": "#/components/schemas/Task" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a task",
+        "description": "Permanently delete a task",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}/focus/start": {
+      "post": {
+        "summary": "Start focus session",
+        "description": "Start a focus/time tracking session for a task. Automatically stops other active focus sessions.",
+        "tags": ["Focus Sessions"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Focus session started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task": { "$ref": "#/components/schemas/Task" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}/focus/end": {
+      "post": {
+        "summary": "End focus session",
+        "description": "End a focus session and save the time spent",
+        "tags": ["Focus Sessions"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["durationMinutes"],
+                "properties": {
+                  "durationMinutes": { "type": "integer", "description": "Duration in minutes" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Focus session ended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task": { "$ref": "#/components/schemas/Task" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/overview": {
+      "get": {
+        "summary": "Get overview statistics",
+        "description": "Retrieve productivity overview statistics including decisions, time blocks, and task types",
+        "tags": ["Analytics"],
+        "responses": {
+          "200": {
+            "description": "Overview statistics",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/OverviewStats" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/recommendations": {
+      "get": {
+        "summary": "Get AI recommendations",
+        "description": "Get AI-powered recommendations for all tasks using specified algorithm",
+        "tags": ["Analytics"],
+        "parameters": [
+          {
+            "name": "method",
+            "in": "query",
+            "description": "AI recommendation method",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["simple", "weighted", "roi", "eisenhower", "skill", "energy", "strategic", "hybrid"],
+              "default": "hybrid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task recommendations",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TaskRecommendations" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/api-keys": {
+      "get": {
+        "summary": "List API keys",
+        "description": "List all API keys for the authenticated user",
+        "tags": ["API Keys"],
+        "responses": {
+          "200": {
+            "description": "List of API keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "apiKeys": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ApiKey" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create API key",
+        "description": "Create a new API key. The key is only returned once!",
+        "tags": ["API Keys"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateApiKey" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "API key created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "apiKey": { "$ref": "#/components/schemas/ApiKey" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/api-keys/{id}": {
+      "patch": {
+        "summary": "Update API key",
+        "description": "Update an API key's name",
+        "tags": ["API Keys"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "API key updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "apiKey": { "$ref": "#/components/schemas/ApiKey" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete API key",
+        "description": "Delete an API key. This action cannot be undone.",
+        "tags": ["API Keys"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "API key deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notes": {
+      "get": {
+        "summary": "List notes",
+        "description": "Retrieve all notes for the authenticated user",
+        "tags": ["Notes"],
+        "responses": {
+          "200": {
+            "description": "List of notes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "notes": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Note" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create note",
+        "description": "Create a new note",
+        "tags": ["Notes"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "content"],
+                "properties": {
+                  "title": { "type": "string" },
+                  "content": { "type": "string" },
+                  "taskId": { "type": "integer", "nullable": true },
+                  "category": { "type": "string" },
+                  "tags": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Note created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "note": { "$ref": "#/components/schemas/Note" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Tasks",
+      "description": "Task management endpoints"
+    },
+    {
+      "name": "Focus Sessions",
+      "description": "Time tracking and focus mode"
+    },
+    {
+      "name": "Analytics",
+      "description": "Statistics and AI recommendations"
+    },
+    {
+      "name": "API Keys",
+      "description": "API key management for programmatic access"
+    },
+    {
+      "name": "Notes",
+      "description": "Note-taking and documentation"
+    }
+  ]
+}
