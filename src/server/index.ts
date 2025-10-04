@@ -19,26 +19,7 @@ const app = new Hono<{ Bindings: Env }>();
 // CORS middleware for all routes
 app.use("*", corsMiddleware);
 
-// API Key authentication middleware for all API routes
-app.use("/api/*", apiKeyAuthMiddleware);
-
-// Rate limiting middleware for all API routes (after auth)
-app.use("/api/*", rateLimitMiddleware);
-
-// API Routes
-app.route("/api/auth", authRoutes);
-app.route("/api/tasks", tasksRoutes);
-app.route("/api/preferences", preferencesRoutes);
-app.route("/api/stats", statsRoutes);
-app.route("/api/notes", notesRoutes);
-app.route("/api/api-keys", apiKeysRoutes);
-
-// Health check
-app.get("/api/health", (c) => {
-  return c.json({ status: "healthy", timestamp: new Date().toISOString() });
-});
-
-// OpenAPI specification endpoints
+// OpenAPI specification endpoints (public, before auth middleware)
 app.get("/api/openapi.json", (c) => {
   return c.json(openApiSpec);
 });
@@ -47,7 +28,7 @@ app.get("/api/openapi-ai.json", (c) => {
   return c.json(openApiAISpec);
 });
 
-// Swagger UI documentation
+// Swagger UI documentation (public, before auth middleware)
 app.get(
   "/api/docs",
   swaggerUI({
@@ -55,13 +36,32 @@ app.get(
   })
 );
 
-// AI-optimized Swagger UI
+// AI-optimized Swagger UI (public, before auth middleware)
 app.get(
   "/api/docs/ai",
   swaggerUI({
     url: "/api/openapi-ai.json",
   })
 );
+
+// Health check (public, before auth middleware)
+app.get("/api/health", (c) => {
+  return c.json({ status: "healthy", timestamp: new Date().toISOString() });
+});
+
+// API Key authentication middleware for all other API routes
+app.use("/api/*", apiKeyAuthMiddleware);
+
+// Rate limiting middleware for all API routes (after auth)
+app.use("/api/*", rateLimitMiddleware);
+
+// API Routes (protected by auth middleware)
+app.route("/api/auth", authRoutes);
+app.route("/api/tasks", tasksRoutes);
+app.route("/api/preferences", preferencesRoutes);
+app.route("/api/stats", statsRoutes);
+app.route("/api/notes", notesRoutes);
+app.route("/api/api-keys", apiKeysRoutes);
 
 // SPA fallback - For any non-API, non-asset route, this will be handled by Workers Assets
 // which serves index.html, enabling client-side routing
