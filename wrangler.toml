@@ -18,6 +18,14 @@ database_name = "task-priority-db"
 database_id = "7eafd761-97e9-4404-b70c-1dec57275214"
 migrations_dir = "src/db/migrations"
 
+# Rate Limiting
+# Note: Create rate limiter with: wrangler rate-limit create api-rate-limit --limit 1000 --period 3600
+[[unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "api-rate-limit"
+simple = { limit = 1000, period = 3600 }
+
 # Variables (non-secret)
 [vars]
 ACCESS_AUD = "2aac6ffc5016ac95306ff002b39481010d0f279ad9ca6b8cc342c33853097162"

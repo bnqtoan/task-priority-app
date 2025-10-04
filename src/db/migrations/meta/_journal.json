@@ -15,6 +15,13 @@
       "when": 1759326185620,
       "tag": "0001_graceful_harry_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1759543127789,
+      "tag": "0002_futuristic_kate_bishop",
+      "breakpoints": true
     }
   ]
 }

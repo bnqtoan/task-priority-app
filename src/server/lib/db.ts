@@ -8,6 +8,7 @@ export interface Env {
   ASSETS?: Fetcher;
   ACCESS_AUD?: string;
   NODE_ENV?: string;
+  RATE_LIMITER?: any; // Cloudflare Rate Limiting API binding
 }
 
 export function createDB(env: Env) {

@@ -17,6 +17,7 @@ import {
   Target,
   TrendingUp,
   BookOpen,
+  Key,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { taskStorage } from "../../lib/storage";
@@ -29,6 +30,8 @@ import { PomodoroSettingsComponent } from "../components/PomodoroSettings";
 import { GlobalPomodoroWidget } from "../components/GlobalPomodoroWidget";
 import { QuickAddFAB } from "../components/QuickAddFAB";
 import { NumberInput } from "../components/NumberInput";
+import { ManualTimeEntryModal } from "../components/ManualTimeEntryModal";
+import { TimeEntryList } from "../components/TimeEntryList";
 import {
   calculateICE,
   calculateWeightedICE,
@@ -110,6 +113,10 @@ const Dashboard = () => {
   const [selectedTaskForFocus, setSelectedTaskForFocus] = useState<Task | null>(
     null,
   );
+
+  // Manual time entry state
+  const [showManualTimeEntry, setShowManualTimeEntry] = useState(false);
+  const [selectedTaskForTime, setSelectedTaskForTime] = useState<Task | null>(null);
 
   // Celebration effect state
   const [showCelebration, setShowCelebration] = useState(false);
@@ -767,6 +774,33 @@ const Dashboard = () => {
     }
   };
 
+  const handleAddManualTime = async (duration: number, type: "focus" | "regular") => {
+    if (!selectedTaskForTime) return;
+
+    try {
+      const updatedTask = await taskStorage.addTimeEntry(
+        selectedTaskForTime.id,
+        duration,
+        type
+      );
+
+      // Update task in the list
+      setTasks(tasks.map((t) => (t.id === selectedTaskForTime.id ? updatedTask : t)));
+
+      // Refresh stats
+      const updatedStats = APP_CONFIG.IS_DEMO
+        ? await taskStorage.getOverviewStats()
+        : await api.getOverview();
+      setStats(updatedStats);
+
+      // Close the modal
+      setShowManualTimeEntry(false);
+      setSelectedTaskForTime(null);
+    } catch (err) {
+      throw err; // Re-throw to be handled by the modal
+    }
+  };
+
   if (loading) {
     return (
       <div className="w-full max-w-7xl mx-auto p-6 bg-gray-50">
@@ -859,6 +893,14 @@ const Dashboard = () => {
             >
               <BookOpen size={18} />
               <span className="hidden xl:inline">Notes</span>
+            </Link>
+            <Link
+              to="/api-keys"
+              className="flex items-center gap-2 px-3 py-2 text-amber-600 hover:bg-amber-50 rounded-lg font-medium transition-colors"
+              title="API Keys"
+            >
+              <Key size={18} />
+              <span className="hidden xl:inline">API Keys</span>
             </Link>
 
             {/* Settings Dropdown */}
@@ -1678,8 +1720,9 @@ const Dashboard = () => {
                     {/* Expanded Row */}
                     {isExpanded && (
                       <tr className="bg-gray-50 border-t border-gray-100">
-                        <td colSpan={7} className="px-6 py-4">
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <td colSpan={7} className="px-6 py-6">
+                          {/* First Row: Status, ICE, Categorization - 3 columns on desktop */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                             {/* Status Management */}
                             <div className="space-y-4">
                               <h4 className="font-semibold text-gray-800 mb-3">
@@ -1902,59 +1945,60 @@ const Dashboard = () => {
                                 </div>
                               </div>
                             </div>
+                          </div>
 
-                            {/* Time Tracking */}
-                            <div className="space-y-4">
-                              <h4 className="font-semibold text-gray-800 mb-3">
-                                ⏱️ Time Tracking
-                              </h4>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                                    Estimated
-                                  </label>
-                                  <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">
-                                    {task.estimatedTime} min
-                                  </div>
+                          {/* Second Row: Time Tracking - Full Width */}
+                          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-medium text-gray-800 text-sm flex items-center gap-2">
+                                  ⏱️ Time Tracking
+                                </h4>
+                                <button
+                                  onClick={() => {
+                                    setSelectedTaskForTime(task);
+                                    setShowManualTimeEntry(true);
+                                  }}
+                                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded flex items-center gap-1.5 transition-colors"
+                                  title="Add manual time entry"
+                                >
+                                  <Clock className="w-3.5 h-3.5" />
+                                  Add Time
+                                </button>
+                              </div>
+
+                              {/* Compact stats row */}
+                              <div className="flex items-center gap-4 text-sm mb-3">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-gray-500">Est:</span>
+                                  <span className="font-semibold text-gray-900">{task.estimatedTime}m</span>
                                 </div>
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                                    Actual Time
-                                  </label>
-                                  <div className="px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-green-800">
-                                    {task.actualTime || 0} min
-                                  </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-gray-500">Actual:</span>
+                                  <span className="font-semibold text-gray-900">{task.actualTime || 0}m</span>
                                 </div>
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                                    Status
-                                  </label>
-                                  <div
-                                    className={`px-3 py-2 rounded-lg border text-sm font-medium ${
-                                      task.isInFocus
-                                        ? "bg-orange-50 border-orange-200 text-orange-800"
-                                        : "bg-gray-50 border-gray-200 text-gray-600"
-                                    }`}
-                                  >
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                                    task.isInFocus
+                                      ? "bg-orange-100 text-orange-700"
+                                      : "bg-gray-100 text-gray-600"
+                                  }`}>
                                     {task.isInFocus ? "🔥 In Focus" : "⏸️ Idle"}
-                                  </div>
+                                  </span>
                                 </div>
                               </div>
+
+                              {/* Compact progress bar */}
                               {task.actualTime && task.estimatedTime && (
-                                <div className="mt-3">
-                                  <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                    <span>Progress</span>
-                                    <span>
-                                      {Math.round(
-                                        (task.actualTime / task.estimatedTime) *
-                                          100,
-                                      )}
-                                      %
+                                <div className="mb-3">
+                                  <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs text-gray-600">Progress</span>
+                                    <span className="text-xs font-semibold text-gray-900">
+                                      {Math.round((task.actualTime / task.estimatedTime) * 100)}%
                                     </span>
                                   </div>
-                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                                     <div
-                                      className={`h-2 rounded-full transition-all ${
+                                      className={`h-2 rounded-full transition-all duration-500 ${
                                         task.actualTime / task.estimatedTime > 1
                                           ? "bg-red-500"
                                           : "bg-blue-500"
@@ -1964,10 +2008,20 @@ const Dashboard = () => {
                                       }}
                                     />
                                   </div>
+                                  {task.actualTime / task.estimatedTime > 1 && (
+                                    <span className="text-xs text-red-600 font-medium mt-1 inline-block">
+                                      {Math.round((task.actualTime / task.estimatedTime - 1) * 100)}% over
+                                    </span>
+                                  )}
                                 </div>
                               )}
-                            </div>
 
+                              {/* Time Entry List */}
+                              <TimeEntryList timeEntries={task.timeEntries} maxHeight="300px" />
+                          </div>
+
+                          {/* Third Row: Scheduling and Description - 2 columns */}
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* Scheduling */}
                             <div className="space-y-4">
                               <h4 className="font-semibold text-gray-800 mb-3">
@@ -2381,6 +2435,18 @@ const Dashboard = () => {
           onComplete={endFocusSession}
           usePomodoroMode={usePomodoroMode}
           targetDuration={focusTask.targetDuration ?? null}
+        />
+      )}
+
+      {/* Manual Time Entry Modal */}
+      {showManualTimeEntry && selectedTaskForTime && (
+        <ManualTimeEntryModal
+          taskName={selectedTaskForTime.name}
+          onClose={() => {
+            setShowManualTimeEntry(false);
+            setSelectedTaskForTime(null);
+          }}
+          onSubmit={handleAddManualTime}
         />
       )}
 

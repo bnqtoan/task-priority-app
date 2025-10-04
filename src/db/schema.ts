@@ -132,6 +132,30 @@ export const notes = sqliteTable("notes", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
+// API Keys Table - For programmatic access
+export const apiKeys = sqliteTable("api_keys", {
+  id: text("id").primaryKey(), // UUID
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+
+  // API Key details
+  keyHash: text("key_hash").notNull().unique(), // bcrypt hashed key
+  name: text("name").notNull(), // "Mobile App", "CLI Tool", etc.
+  prefix: text("prefix").notNull(), // First 8 chars for identification (e.g., "task_abc")
+
+  // Usage tracking
+  lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
+  requestCount: integer("request_count").default(0),
+
+  // Expiration
+  expiresAt: integer("expires_at", { mode: "timestamp" }), // null = never expires
+
+  // Timestamps
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
 // Type definitions
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -143,3 +167,5 @@ export type UserPreferences = typeof userPreferences.$inferSelect;
 export type NewUserPreferences = typeof userPreferences.$inferInsert;
 export type Note = typeof notes.$inferSelect;
 export type NewNote = typeof notes.$inferInsert;
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;

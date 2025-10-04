@@ -85,7 +85,7 @@ tasksRouter.get("/", zValidator("query", taskQuerySchema), async (c) => {
         acc[entry.taskId].push({
           ...entry,
           startTime: new Date(entry.startTime),
-          endTime: entry.endTime ? new Date(entry.endTime) : undefined,
+          endTime: entry.endTime ? new Date(entry.endTime) : null,
           createdAt: new Date(entry.createdAt),
           updatedAt: new Date(entry.updatedAt),
         });

@@ -1,0 +1,913 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Task Priority App API",
+    "version": "1.0.0",
+    "description": "AI-optimized task management API with ICE scoring (Impact, Confidence, Ease), 4D decision framework (Do, Delegate, Delay, Delete), time tracking, and AI recommendations. Use this API to manage tasks, track time, get productivity analytics, and manage programmatic access via API keys.",
+    "contact": {
+      "name": "API Support",
+      "url": "https://github.com/yourusername/task-priority-app"
+    },
+    "x-ai-friendly": true,
+    "x-supports-function-calling": true
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8787",
+      "description": "Development server"
+    },
+    {
+      "url": "https://your-app.workers.dev",
+      "description": "Production server"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API Key",
+        "description": "API key authentication. Use format: 'Bearer task_live_XXXXXXXX...' in Authorization header"
+      }
+    },
+    "schemas": {
+      "Task": {
+        "type": "object",
+        "description": "A task with ICE scoring for prioritization",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Unique task identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Task title or name",
+            "example": "Complete project documentation"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "description": "Additional notes or description in plain text or markdown"
+          },
+          "impact": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "Impact score (1-10): How much value this task provides when completed",
+            "example": 8
+          },
+          "confidence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "Confidence score (1-10): How confident you are in your ability to complete this",
+            "example": 7
+          },
+          "ease": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "Ease score (1-10): How easy/quick this task is to complete",
+            "example": 6
+          },
+          "type": {
+            "type": "string",
+            "enum": ["revenue", "growth", "operations", "strategic", "personal"],
+            "description": "Task category: revenue (income-generating), growth (learning/skills), operations (day-to-day), strategic (long-term planning), personal (personal tasks)"
+          },
+          "timeBlock": {
+            "type": "string",
+            "enum": ["deep", "collaborative", "quick", "systematic"],
+            "description": "When to do this: deep (focused deep work), collaborative (with others), quick (small tasks), systematic (routine processes)"
+          },
+          "estimatedTime": {
+            "type": "integer",
+            "description": "Estimated duration in minutes",
+            "example": 120
+          },
+          "decision": {
+            "type": "string",
+            "enum": ["do", "delegate", "delay", "delete"],
+            "description": "4D Framework decision: do (prioritize now), delegate (assign to others), delay (postpone), delete (eliminate)"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "completed", "archived"],
+            "default": "active",
+            "description": "Task status"
+          },
+          "actualTime": {
+            "type": "integer",
+            "default": 0,
+            "description": "Total time spent on task in minutes (tracked via focus sessions)"
+          },
+          "isInFocus": {
+            "type": "boolean",
+            "description": "Whether task currently has an active time tracking session"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Hard deadline for task completion (ISO 8601 format)",
+            "example": "2025-12-31T23:59:59Z"
+          },
+          "scheduledFor": {
+            "type": "string",
+            "enum": ["today", "this-week", "this-month", "someday"],
+            "nullable": true,
+            "description": "Time horizon for task completion"
+          },
+          "recurringPattern": {
+            "type": "string",
+            "enum": ["daily", "weekly", "monthly"],
+            "nullable": true,
+            "description": "Recurrence pattern for repeating tasks"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When task was created"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When task was completed"
+          }
+        },
+        "required": ["name", "impact", "confidence", "ease", "type", "timeBlock", "estimatedTime", "decision"]
+      },
+      "CreateTaskRequest": {
+        "type": "object",
+        "description": "Request body for creating a new task",
+        "required": ["name", "impact", "confidence", "ease", "type", "timeBlock", "estimatedTime", "decision"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Task title",
+            "example": "Write blog post about productivity"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Optional detailed notes",
+            "example": "Cover ICE scoring methodology and examples"
+          },
+          "impact": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "example": 8
+          },
+          "confidence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "example": 7
+          },
+          "ease": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "example": 6
+          },
+          "type": {
+            "type": "string",
+            "enum": ["revenue", "growth", "operations", "strategic", "personal"],
+            "example": "growth"
+          },
+          "timeBlock": {
+            "type": "string",
+            "enum": ["deep", "collaborative", "quick", "systematic"],
+            "example": "deep"
+          },
+          "estimatedTime": {
+            "type": "integer",
+            "description": "Estimated minutes to complete",
+            "example": 120
+          },
+          "decision": {
+            "type": "string",
+            "enum": ["do", "delegate", "delay", "delete"],
+            "example": "do"
+          },
+          "scheduledFor": {
+            "type": "string",
+            "enum": ["today", "this-week", "this-month", "someday"],
+            "example": "this-week"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2025-12-31T23:59:59Z"
+          }
+        },
+        "example": {
+          "name": "Write blog post about productivity",
+          "impact": 8,
+          "confidence": 7,
+          "ease": 6,
+          "type": "growth",
+          "timeBlock": "deep",
+          "estimatedTime": 120,
+          "decision": "do",
+          "scheduledFor": "this-week"
+        }
+      },
+      "ApiKey": {
+        "type": "object",
+        "description": "API key for programmatic access",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Descriptive name for this key",
+            "example": "Mobile App Integration"
+          },
+          "prefix": {
+            "type": "string",
+            "description": "First 8 characters for identification",
+            "example": "task_abc1"
+          },
+          "key": {
+            "type": "string",
+            "description": "Full API key (only shown once on creation)",
+            "example": "task_live_abc123def456..."
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "requestCount": {
+            "type": "integer",
+            "description": "Total requests made with this key"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "details": {
+            "type": "object",
+            "description": "Additional error details"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "checkHealth",
+        "summary": "Health check",
+        "description": "Check if the API is running and healthy. No authentication required.",
+        "tags": ["System"],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "API is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "healthy"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "example": "2025-10-04T12:00:00Z"
+                    }
+                  }
+                },
+                "example": {
+                  "status": "healthy",
+                  "timestamp": "2025-10-04T12:00:00Z"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks": {
+      "get": {
+        "operationId": "listTasks",
+        "summary": "List all tasks",
+        "description": "Retrieve all tasks for the authenticated user. Optionally filter by status (active, completed, archived). Returns tasks with ICE scores, time tracking data, and decision framework classification.",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter tasks by status",
+            "schema": {
+              "type": "string",
+              "enum": ["active", "completed", "archived"],
+              "example": "active"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tasks": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Task"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createTask",
+        "summary": "Create a new task",
+        "description": "Create a new task with ICE scoring (Impact, Confidence, Ease). The task will be prioritized using AI algorithms based on these scores and the 4D decision framework (Do, Delegate, Delay, Delete).",
+        "tags": ["Tasks"],
+        "requestBody": {
+          "required": true,
+          "description": "Task details including required ICE scores and categorization",
+          "content": {
+            "application/json": {
+                "schema": {
+                "$ref": "#/components/schemas/CreateTaskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Task created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error - Invalid input data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Validation error",
+                  "details": {
+                    "impact": "Must be between 1 and 10"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}": {
+      "get": {
+        "operationId": "getTask",
+        "summary": "Get a specific task",
+        "description": "Retrieve detailed information about a specific task by its ID, including all ICE scores, time tracking data, and status.",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Task ID",
+            "schema": {
+              "type": "integer",
+              "example": 123
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateTask",
+        "summary": "Update a task",
+        "description": "Update specific fields of a task. You can update any combination of fields including ICE scores, status, name, or decision classification.",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Task ID to update",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Fields to update (all optional, only include fields you want to change)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["active", "completed", "archived"]
+                  },
+                  "impact": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10
+                  },
+                  "confidence": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10
+                  },
+                  "ease": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10
+                  },
+                  "decision": {
+                    "type": "string",
+                    "enum": ["do", "delegate", "delay", "delete"]
+                  }
+                },
+                "example": {
+                  "status": "completed",
+                  "impact": 9
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteTask",
+        "summary": "Delete a task",
+        "description": "Permanently delete a task and all associated time tracking data. This action cannot be undone.",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Task ID to delete",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Task deleted successfully"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}/focus/start": {
+      "post": {
+        "operationId": "startFocusSession",
+        "summary": "Start time tracking",
+        "description": "Start a focus/time tracking session for a task. This automatically stops any other active focus sessions to ensure only one timer runs at a time. Use this when you begin working on a task.",
+        "tags": ["Time Tracking"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Task ID to start tracking",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Focus session started successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}/focus/end": {
+      "post": {
+        "operationId": "endFocusSession",
+        "summary": "Stop time tracking",
+        "description": "End a focus session and record the time spent. The duration is added to the task's total actualTime. Use this when you finish working on a task.",
+        "tags": ["Time Tracking"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Task ID to stop tracking",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Duration of the focus session",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["durationMinutes"],
+                "properties": {
+                  "durationMinutes": {
+                    "type": "integer",
+                    "description": "How many minutes were spent on this task",
+                    "example": 25
+                  }
+                },
+                "example": {
+                  "durationMinutes": 25
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Focus session ended, time recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "task": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats": {
+      "get": {
+        "operationId": "getStatistics",
+        "summary": "Get productivity statistics",
+        "description": "Retrieve comprehensive productivity statistics including task counts, time spent, completion rates, and AI-generated recommendations based on 8 different prioritization algorithms (simple, weighted, roi, eisenhower, skill, energy, strategic, hybrid).",
+        "tags": ["Analytics"],
+        "parameters": [
+          {
+            "name": "method",
+            "in": "query",
+            "description": "AI recommendation algorithm to use for task prioritization",
+            "schema": {
+              "type": "string",
+              "enum": ["simple", "weighted", "roi", "eisenhower", "skill", "energy", "strategic", "hybrid"],
+              "default": "hybrid",
+              "example": "hybrid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Statistics and AI recommendations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totalTasks": {
+                      "type": "integer"
+                    },
+                    "completedTasks": {
+                      "type": "integer"
+                    },
+                    "activeTasks": {
+                      "type": "integer"
+                    },
+                    "totalTimeSpent": {
+                      "type": "integer",
+                      "description": "Total minutes tracked across all tasks"
+                    },
+                    "tasksByDecision": {
+                      "type": "object",
+                      "properties": {
+                        "do": {
+                          "type": "integer"
+                        },
+                        "delegate": {
+                          "type": "integer"
+                        },
+                        "delay": {
+                          "type": "integer"
+                        },
+                        "delete": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/api-keys": {
+      "get": {
+        "operationId": "listApiKeys",
+        "summary": "List API keys",
+        "description": "List all API keys created by the authenticated user, including usage statistics (last used, request count) and expiration dates.",
+        "tags": ["API Keys"],
+        "responses": {
+          "200": {
+            "description": "List of API keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "apiKeys": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ApiKey"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createApiKey",
+        "summary": "Create API key",
+        "description": "Create a new API key for programmatic access. IMPORTANT: The full key is only returned once at creation time - save it securely. The key format is 'task_live_XXXXXXXX...' and must be sent as 'Authorization: Bearer <key>' in subsequent requests.",
+        "tags": ["API Keys"],
+        "requestBody": {
+          "required": true,
+          "description": "API key configuration",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Descriptive name for this key (e.g., 'Mobile App', 'Zapier Integration')",
+                    "example": "Mobile App"
+                  },
+                  "expiresInDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365,
+                    "description": "Optional: Days until key expires (omit for no expiration)",
+                    "example": 90
+                  }
+                },
+                "example": {
+                  "name": "Mobile App",
+                  "expiresInDays": 90
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "API key created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "apiKey": {
+                      "$ref": "#/components/schemas/ApiKey"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "API key created successfully. Save this key securely - it won't be shown again."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/api-keys/{id}": {
+      "delete": {
+        "operationId": "deleteApiKey",
+        "summary": "Delete API key",
+        "description": "Delete an API key. This immediately revokes access for the key. This action cannot be undone.",
+        "tags": ["API Keys"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "API key ID (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "API key deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "API key deleted successfully"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "System",
+      "description": "System health and status endpoints"
+    },
+    {
+      "name": "Tasks",
+      "description": "Task management with ICE scoring and 4D decision framework"
+    },
+    {
+      "name": "Time Tracking",
+      "description": "Focus sessions and time tracking for tasks"
+    },
+    {
+      "name": "Analytics",
+      "description": "Productivity statistics and AI-powered recommendations"
+    },
+    {
+      "name": "API Keys",
+      "description": "Manage API keys for programmatic access"
+    }
+  ],
+  "x-ai-usage-guide": {
+    "description": "This API is optimized for AI agent integration via function calling",
+    "common-workflows": [
+      {
+        "name": "Create and prioritize task",
+        "steps": [
+          "Use createTask with ICE scores (impact, confidence, ease from 1-10)",
+          "System automatically assigns 4D decision (do/delegate/delay/delete)",
+          "Optionally use getStatistics to see AI recommendations"
+        ]
+      },
+      {
+        "name": "Track time on task",
+        "steps": [
+          "Use startFocusSession when beginning work",
+          "Use endFocusSession with duration when done",
+          "Time is automatically added to task's actualTime"
+        ]
+      },
+      {
+        "name": "Get task recommendations",
+        "steps": [
+          "Use getStatistics with desired AI method (hybrid recommended)",
+          "Review tasksByDecision breakdown",
+          "Use listTasks filtered by decision='do' to get prioritized list"
+        ]
+      }
+    ],
+    "authentication-setup": [
+      "First, use createApiKey to generate an API key",
+      "Save the returned key securely (only shown once)",
+      "Use 'Authorization: Bearer task_live_...' header in all subsequent requests"
+    ]
+  }
+}
