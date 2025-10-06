@@ -1,16 +1,16 @@
 import { useMemo } from "react";
 import type {
-  DailyHeatmapData,
-  WeeklyHeatmapData,
-  MonthlyHeatmapData,
+  DayHeatmapData,
+  WeekHeatmapData,
+  MonthHeatmapData,
+  YearHeatmapData,
+  HeatmapViewType,
 } from "../../utils/types";
 import { formatDuration } from "../../utils/analytics";
 
-type HeatmapMode = "daily" | "weekly" | "monthly";
-
 interface TimeHeatmapProps {
-  mode: HeatmapMode;
-  data: DailyHeatmapData | WeeklyHeatmapData | MonthlyHeatmapData;
+  viewType: HeatmapViewType;
+  data: DayHeatmapData | WeekHeatmapData | MonthHeatmapData | YearHeatmapData;
 }
 
 const INTENSITY_COLORS = [
@@ -22,35 +22,40 @@ const INTENSITY_COLORS = [
 ];
 
 // Type guards
-function isDailyHeatmapData(data: any): data is DailyHeatmapData {
+function isDayHeatmapData(data: any): data is DayHeatmapData {
   return data && "hourlyByDay" in data;
 }
 
-function isWeeklyHeatmapData(data: any): data is WeeklyHeatmapData {
-  return data && "dailyByWeek" in data;
+function isWeekHeatmapData(data: any): data is WeekHeatmapData {
+  return data && "dailyByWeek" in data && "weekLabels" in data;
 }
 
-function isMonthlyHeatmapData(data: any): data is MonthlyHeatmapData {
-  return data && "dailyByMonth" in data;
+function isMonthHeatmapData(data: any): data is MonthHeatmapData {
+  return data && "dailyByMonth" in data && "monthLabel" in data;
 }
 
-export function TimeHeatmap({ mode, data }: TimeHeatmapProps) {
+function isYearHeatmapData(data: any): data is YearHeatmapData {
+  return data && "monthlyByYear" in data && "yearLabels" in data;
+}
+
+export function TimeHeatmap({ viewType, data }: TimeHeatmapProps) {
   const heatmapView = useMemo(() => {
-    if (mode === "daily" && isDailyHeatmapData(data)) {
-      return <DailyHeatmapView data={data} />;
-    } else if (mode === "weekly" && isWeeklyHeatmapData(data)) {
-      return <WeeklyHeatmapView data={data} />;
-    } else if (mode === "monthly" && isMonthlyHeatmapData(data)) {
-      return <MonthlyHeatmapView data={data} />;
+    if (viewType === "day" && isDayHeatmapData(data)) {
+      return <DayHeatmapView data={data} />;
+    } else if (viewType === "week" && isWeekHeatmapData(data)) {
+      return <WeekHeatmapView data={data} />;
+    } else if (viewType === "month" && isMonthHeatmapData(data)) {
+      return <MonthHeatmapView data={data} />;
+    } else if (viewType === "year" && isYearHeatmapData(data)) {
+      return <YearHeatmapView data={data} />;
     } else {
-      // Data doesn't match mode (race condition during mode switch)
       return (
         <div className="text-center py-8 text-gray-500">
           Loading heatmap data...
         </div>
       );
     }
-  }, [mode, data]);
+  }, [viewType, data]);
 
   return (
     <div className="space-y-4">
@@ -60,19 +65,36 @@ export function TimeHeatmap({ mode, data }: TimeHeatmapProps) {
   );
 }
 
-function DailyHeatmapView({ data }: { data: DailyHeatmapData }) {
-  const { hourlyByDay, peakHours, leastActiveHours } = data;
+function DayHeatmapView({ data }: { data: DayHeatmapData }) {
+  const { hourlyByDay, peakHours, peakDays, totalMinutes } = data;
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
+  if (!hourlyByDay || hourlyByDay.length === 0 || totalMinutes === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        No time tracking data available for this period.
+        <br />
+        <span className="text-sm">
+          Start using Focus Mode to track your work patterns!
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
+      {/* Summary */}
+      <div className="text-sm text-gray-600 mb-2">
+        Total time tracked: <span className="font-semibold">{formatDuration(totalMinutes)}</span>
+      </div>
+
       {/* Heatmap Grid */}
       <div className="overflow-x-auto">
         <div className="inline-block min-w-full">
           {/* Hour labels */}
           <div className="flex mb-1">
-            <div className="w-12"></div> {/* Space for day labels */}
+            <div className="w-12"></div>
             {hours.map((hour) => (
               <div
                 key={hour}
@@ -108,7 +130,6 @@ function DailyHeatmapView({ data }: { data: DailyHeatmapData }) {
                       }}
                       title={`${dayName} ${hour}:00 - ${formatDuration(minutes)}`}
                     />
-                    {/* Tooltip on hover */}
                     {minutes > 0 && (
                       <div className="hidden group-hover:block absolute z-10 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap -top-8 left-1/2 transform -translate-x-1/2">
                         {dayName} {hour}:00
@@ -137,14 +158,12 @@ function DailyHeatmapView({ data }: { data: DailyHeatmapData }) {
               : "No data"}
           </div>
         </div>
-        <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
-          <div className="text-sm font-semibold text-orange-900 mb-1">
-            Least Active Hours
+        <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+          <div className="text-sm font-semibold text-green-900 mb-1">
+            Most Productive Days
           </div>
-          <div className="text-xs text-orange-700">
-            {leastActiveHours.length > 0
-              ? leastActiveHours.map((h) => `${h}:00`).join(", ")
-              : "No quiet periods"}
+          <div className="text-xs text-green-700">
+            {peakDays.length > 0 ? peakDays.join(", ") : "No data"}
           </div>
         </div>
       </div>
@@ -152,10 +171,10 @@ function DailyHeatmapView({ data }: { data: DailyHeatmapData }) {
   );
 }
 
-function WeeklyHeatmapView({ data }: { data: WeeklyHeatmapData }) {
-  const { dailyByWeek, peakDays } = data;
+function WeekHeatmapView({ data }: { data: WeekHeatmapData }) {
+  const { dailyByWeek, weekLabels, totalMinutes } = data;
 
-  if (!dailyByWeek || dailyByWeek.length === 0) {
+  if (!dailyByWeek || dailyByWeek.length === 0 || totalMinutes === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
         No time tracking data available for weekly view
@@ -163,60 +182,76 @@ function WeeklyHeatmapView({ data }: { data: WeeklyHeatmapData }) {
     );
   }
 
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
   return (
     <div className="space-y-3">
-      {/* Grid */}
-      <div className="grid grid-cols-7 gap-2">
-        {dailyByWeek.map((cell, index) => {
-          const minutes = cell.minutes;
-          const intensity = cell.intensity;
-
-          return (
-            <div
-              key={index}
-              className="group relative p-3 rounded-lg border border-gray-200 hover:border-gray-400 transition-all cursor-pointer"
-              style={{
-                backgroundColor: INTENSITY_COLORS[intensity],
-              }}
-            >
-              <div className="text-xs font-medium text-gray-700 mb-1">
-                {cell.day}
-              </div>
-              <div className="text-sm font-semibold text-gray-900">
-                {formatDuration(minutes)}
-              </div>
-
-              {/* Tooltip */}
-              {minutes > 0 && (
-                <div className="hidden group-hover:block absolute z-10 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap -top-10 left-1/2 transform -translate-x-1/2">
-                  {cell.day}
-                  <br />
-                  {formatDuration(minutes)}
-                  <div className="absolute bottom-[-4px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-gray-900"></div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+      <div className="text-sm text-gray-600 mb-2">
+        Total time tracked: <span className="font-semibold">{formatDuration(totalMinutes)}</span>
       </div>
 
-      {/* Insights */}
-      <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-        <div className="text-sm font-semibold text-green-900 mb-1">
-          Most Productive Days
-        </div>
-        <div className="text-xs text-green-700">
-          {peakDays.length > 0 ? peakDays.join(", ") : "No data"}
-        </div>
+      {/* Grid */}
+      <div className="overflow-x-auto">
+        <table className="min-w-full border-collapse">
+          <thead>
+            <tr>
+              <th className="border p-2 bg-gray-50 text-xs font-medium text-gray-600"></th>
+              {weekLabels.map((label) => (
+                <th key={label} className="border p-2 bg-gray-50 text-xs font-medium text-gray-600">
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {dayNames.map((dayName, dayIndex) => (
+              <tr key={dayName}>
+                <td className="border p-2 text-xs font-medium text-gray-600 bg-gray-50">
+                  {dayName}
+                </td>
+                {weekLabels.map((_, weekIndex) => {
+                  const cell = dailyByWeek.find(
+                    (c) => c.dayOfWeek === dayIndex && c.weekNumber === weekIndex,
+                  );
+                  const minutes = cell?.minutes || 0;
+                  const intensity = cell?.intensity || 0;
+
+                  return (
+                    <td
+                      key={`${weekIndex}-${dayIndex}`}
+                      className="border p-2 group relative cursor-pointer hover:opacity-80"
+                      style={{
+                        backgroundColor: INTENSITY_COLORS[intensity],
+                      }}
+                      title={formatDuration(minutes)}
+                    >
+                      <div className="text-xs text-center text-gray-700 font-medium">
+                        {minutes > 0 ? formatDuration(minutes) : ""}
+                      </div>
+                      {minutes > 0 && (
+                        <div className="hidden group-hover:block absolute z-10 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap -top-10 left-1/2 transform -translate-x-1/2">
+                          Week {weekIndex + 1} - {dayName}
+                          <br />
+                          {formatDuration(minutes)}
+                          <div className="absolute bottom-[-4px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-gray-900"></div>
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
 
-function MonthlyHeatmapView({ data }: { data: MonthlyHeatmapData }) {
-  const { dailyByMonth, peakDates } = data;
+function MonthHeatmapView({ data }: { data: MonthHeatmapData }) {
+  const { dailyByMonth, monthLabel, totalMinutes } = data;
 
-  if (!dailyByMonth || dailyByMonth.length === 0) {
+  if (!dailyByMonth || dailyByMonth.length === 0 || totalMinutes === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
         No time tracking data available for monthly view
@@ -226,8 +261,20 @@ function MonthlyHeatmapView({ data }: { data: MonthlyHeatmapData }) {
 
   return (
     <div className="space-y-3">
-      {/* Grid */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm text-gray-600">
+          Total time tracked: <span className="font-semibold">{formatDuration(totalMinutes)}</span>
+        </div>
+        <div className="text-sm font-semibold text-gray-700">{monthLabel}</div>
+      </div>
+
+      {/* Calendar Grid */}
       <div className="grid grid-cols-7 gap-2">
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+          <div key={day} className="text-center text-xs font-semibold text-gray-600 p-1">
+            {day}
+          </div>
+        ))}
         {dailyByMonth.map((cell) => {
           const minutes = cell.minutes;
           const intensity = cell.intensity;
@@ -245,37 +292,85 @@ function MonthlyHeatmapView({ data }: { data: MonthlyHeatmapData }) {
               <div className="text-lg font-bold text-gray-700">
                 {dayOfMonth}
               </div>
-              <div className="text-xs text-gray-600">{cell.day}</div>
-
-              {/* Tooltip */}
               {minutes > 0 && (
-                <div className="hidden group-hover:block absolute z-10 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap -top-14 left-1/2 transform -translate-x-1/2">
-                  {dateObj.toLocaleDateString()}
-                  <br />
-                  {formatDuration(minutes)}
-                  <div className="absolute bottom-[-4px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-gray-900"></div>
-                </div>
+                <>
+                  <div className="text-xs text-gray-600 mt-1">
+                    {formatDuration(minutes)}
+                  </div>
+                  <div className="hidden group-hover:block absolute z-10 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap -top-14 left-1/2 transform -translate-x-1/2">
+                    {dateObj.toLocaleDateString()}
+                    <br />
+                    {formatDuration(minutes)}
+                    <div className="absolute bottom-[-4px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-gray-900"></div>
+                  </div>
+                </>
               )}
             </div>
           );
         })}
       </div>
+    </div>
+  );
+}
 
-      {/* Insights */}
-      <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
-        <div className="text-sm font-semibold text-purple-900 mb-1">
-          Top 5 Most Productive Days
-        </div>
-        <div className="text-xs text-purple-700 space-y-1">
-          {peakDates.length > 0
-            ? peakDates.map((dateStr, idx) => (
-                <div key={dateStr}>
-                  {idx + 1}. {new Date(dateStr).toLocaleDateString()}
-                </div>
-              ))
-            : "No data"}
-        </div>
+function YearHeatmapView({ data }: { data: YearHeatmapData }) {
+  const { monthlyByYear, yearLabels, totalMinutes } = data;
+
+  if (!monthlyByYear || monthlyByYear.length === 0 || totalMinutes === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        No time tracking data available for year view
       </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="text-sm text-gray-600 mb-2">
+        Total time tracked: <span className="font-semibold">{formatDuration(totalMinutes)}</span>
+      </div>
+
+      {/* Grid for each year */}
+      {yearLabels.map((year) => (
+        <div key={year} className="mb-6">
+          <div className="text-sm font-semibold text-gray-700 mb-2">{year}</div>
+          <div className="grid grid-cols-6 md:grid-cols-12 gap-2">
+            {monthlyByYear
+              .filter((cell) => cell.year === parseInt(year))
+              .map((cell) => {
+                const minutes = cell.minutes;
+                const intensity = cell.intensity;
+
+                return (
+                  <div
+                    key={`${year}-${cell.monthNumber}`}
+                    className="group relative p-3 rounded-lg border border-gray-200 hover:border-gray-400 transition-all cursor-pointer aspect-square flex flex-col items-center justify-center"
+                    style={{
+                      backgroundColor: INTENSITY_COLORS[intensity],
+                    }}
+                  >
+                    <div className="text-xs font-medium text-gray-700">
+                      {cell.day}
+                    </div>
+                    {minutes > 0 && (
+                      <>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {formatDuration(minutes)}
+                        </div>
+                        <div className="hidden group-hover:block absolute z-10 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap -top-14 left-1/2 transform -translate-x-1/2">
+                          {cell.day} {year}
+                          <br />
+                          {formatDuration(minutes)}
+                          <div className="absolute bottom-[-4px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-4 border-t-gray-900"></div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

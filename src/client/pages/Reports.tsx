@@ -34,9 +34,11 @@ import type {
   TimeRangePreset,
   ReportData,
   EndOfDayInsights,
-  DailyHeatmapData,
-  WeeklyHeatmapData,
-  MonthlyHeatmapData,
+  DayHeatmapData,
+  WeekHeatmapData,
+  MonthHeatmapData,
+  YearHeatmapData,
+  HeatmapViewType,
 } from "../../utils/types";
 import { taskStorage } from "../../lib/storage";
 import {
@@ -45,9 +47,10 @@ import {
   generateEndOfDayInsights,
   formatDuration,
   formatPercentage,
-  generateDailyHeatmap,
-  generateWeeklyHeatmap,
-  generateMonthlyHeatmap,
+  generateDayHeatmap,
+  generateWeekHeatmap,
+  generateMonthHeatmap,
+  generateYearHeatmap,
 } from "../../utils/analytics";
 import { TimeHeatmap } from "../components/TimeHeatmap";
 
@@ -82,9 +85,9 @@ export function Reports() {
   const [customEndDate, setCustomEndDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [showInsights, setShowInsights] = useState(true);
-  const [heatmapMode, setHeatmapMode] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [heatmapViewType, setHeatmapViewType] = useState<HeatmapViewType>("day");
   const [heatmapData, setHeatmapData] = useState<
-    DailyHeatmapData | WeeklyHeatmapData | MonthlyHeatmapData | null
+    DayHeatmapData | WeekHeatmapData | MonthHeatmapData | YearHeatmapData | null
   >(null);
 
   // Load tasks
@@ -122,15 +125,17 @@ export function Reports() {
       setEndOfDayInsights(null);
     }
 
-    // Generate heatmap data based on selected mode
-    if (heatmapMode === "daily") {
-      setHeatmapData(generateDailyHeatmap(tasks, dateRange));
-    } else if (heatmapMode === "weekly") {
-      setHeatmapData(generateWeeklyHeatmap(tasks, dateRange));
+    // Generate heatmap data based on selected view type
+    if (heatmapViewType === "day") {
+      setHeatmapData(generateDayHeatmap(tasks, dateRange));
+    } else if (heatmapViewType === "week") {
+      setHeatmapData(generateWeekHeatmap(tasks, dateRange));
+    } else if (heatmapViewType === "month") {
+      setHeatmapData(generateMonthHeatmap(tasks, dateRange));
     } else {
-      setHeatmapData(generateMonthlyHeatmap(tasks, dateRange));
+      setHeatmapData(generateYearHeatmap(tasks, dateRange));
     }
-  }, [tasks, dateRange, selectedPreset, heatmapMode]);
+  }, [tasks, dateRange, selectedPreset, heatmapViewType]);
 
   const handlePresetChange = (preset: TimeRangePreset) => {
     setSelectedPreset(preset);
@@ -200,10 +205,14 @@ export function Reports() {
             [
               "today",
               "week",
+              "last-week",
               "month",
+              "last-month",
               "last7",
               "last30",
               "last90",
+              "this-year",
+              "last-year",
               "all",
             ] as TimeRangePreset[]
           ).map((preset) => (
@@ -218,10 +227,14 @@ export function Reports() {
             >
               {preset === "today" && "Today"}
               {preset === "week" && "This Week"}
+              {preset === "last-week" && "Last Week"}
               {preset === "month" && "This Month"}
+              {preset === "last-month" && "Last Month"}
               {preset === "last7" && "Last 7 Days"}
               {preset === "last30" && "Last 30 Days"}
               {preset === "last90" && "Last 90 Days"}
+              {preset === "this-year" && "This Year"}
+              {preset === "last-year" && "Last Year"}
               {preset === "all" && "All Time"}
             </button>
           ))}
@@ -764,41 +777,56 @@ export function Reports() {
       {/* Work Pattern Heatmap */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900">Work Pattern Heatmap</h3>
+          <div>
+            <h3 className="font-semibold text-gray-900">Work Pattern Heatmap</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Visualize your work patterns for the selected time period
+            </p>
+          </div>
           <div className="flex gap-2">
             <button
-              onClick={() => setHeatmapMode("daily")}
+              onClick={() => setHeatmapViewType("day")}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                heatmapMode === "daily"
+                heatmapViewType === "day"
                   ? "bg-blue-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              Daily
+              Day View
             </button>
             <button
-              onClick={() => setHeatmapMode("weekly")}
+              onClick={() => setHeatmapViewType("week")}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                heatmapMode === "weekly"
+                heatmapViewType === "week"
                   ? "bg-blue-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              Weekly
+              Week View
             </button>
             <button
-              onClick={() => setHeatmapMode("monthly")}
+              onClick={() => setHeatmapViewType("month")}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                heatmapMode === "monthly"
+                heatmapViewType === "month"
                   ? "bg-blue-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              Monthly
+              Month View
+            </button>
+            <button
+              onClick={() => setHeatmapViewType("year")}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                heatmapViewType === "year"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Year View
             </button>
           </div>
         </div>
-        {heatmapData && <TimeHeatmap mode={heatmapMode} data={heatmapData} />}
+        {heatmapData && <TimeHeatmap viewType={heatmapViewType} data={heatmapData} />}
         {!heatmapData && (
           <div className="text-center py-8 text-gray-500">
             No time tracking data available for this period

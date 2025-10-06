@@ -233,10 +233,14 @@ export interface TaskScheduleSuggestion {
 export type TimeRangePreset =
   | "today"
   | "week"
+  | "last-week"
   | "month"
+  | "last-month"
   | "last7"
   | "last30"
   | "last90"
+  | "this-year"
+  | "last-year"
   | "custom"
   | "all";
 
@@ -279,32 +283,51 @@ export interface HourlyTimeData {
   label: string;
 }
 
+export type HeatmapViewType = "day" | "week" | "month" | "year";
+
 export interface HeatmapCell {
   hour?: number;
   day: string;
   dayOfWeek?: number;
   date?: string;
+  weekNumber?: number;
+  monthNumber?: number;
+  year?: number;
   minutes: number;
   intensity: number; // 0-4 (5 levels)
 }
 
-export interface DailyHeatmapData {
-  hourlyByDay: HeatmapCell[]; // 24 hours × 7 days
+export interface DayHeatmapData {
+  hourlyByDay: HeatmapCell[]; // 24 hours × 7 days (aggregated from period)
   maxMinutes: number;
   peakHours: number[];
-  leastActiveHours: number[];
-}
-
-export interface WeeklyHeatmapData {
-  dailyByWeek: HeatmapCell[]; // 7 days × N weeks
-  maxMinutes: number;
   peakDays: string[];
+  totalMinutes: number;
+  dateRange: DateRange;
 }
 
-export interface MonthlyHeatmapData {
-  dailyByMonth: HeatmapCell[]; // Calendar days with time data
+export interface WeekHeatmapData {
+  dailyByWeek: HeatmapCell[]; // Days × Weeks in period
   maxMinutes: number;
-  peakDates: string[];
+  weekLabels: string[];
+  totalMinutes: number;
+  dateRange: DateRange;
+}
+
+export interface MonthHeatmapData {
+  dailyByMonth: HeatmapCell[]; // Calendar grid of dates
+  maxMinutes: number;
+  monthLabel: string;
+  totalMinutes: number;
+  dateRange: DateRange;
+}
+
+export interface YearHeatmapData {
+  monthlyByYear: HeatmapCell[]; // 12 months × N years
+  maxMinutes: number;
+  yearLabels: string[];
+  totalMinutes: number;
+  dateRange: DateRange;
 }
 
 export interface TopTask {

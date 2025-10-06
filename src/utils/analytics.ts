@@ -11,9 +11,10 @@ import type {
   ProductivityMetrics,
   ReportData,
   HeatmapCell,
-  DailyHeatmapData,
-  WeeklyHeatmapData,
-  MonthlyHeatmapData,
+  DayHeatmapData,
+  WeekHeatmapData,
+  MonthHeatmapData,
+  YearHeatmapData,
 } from "./types";
 
 /**
@@ -61,9 +62,26 @@ export function getDateRangeForPreset(preset: TimeRangePreset): DateRange {
       return { start, end, preset };
     }
 
+    case "last-week": {
+      const start = new Date(today);
+      const dayOfWeek = start.getDay();
+      start.setDate(start.getDate() - dayOfWeek - 7); // Start from last Sunday
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+      return { start, end, preset };
+    }
+
     case "month": {
       const start = new Date(now.getFullYear(), now.getMonth(), 1);
       const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      end.setHours(23, 59, 59, 999);
+      return { start, end, preset };
+    }
+
+    case "last-month": {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0);
       end.setHours(23, 59, 59, 999);
       return { start, end, preset };
     }
@@ -88,6 +106,20 @@ export function getDateRangeForPreset(preset: TimeRangePreset): DateRange {
       const start = new Date(today);
       start.setDate(start.getDate() - 89);
       const end = new Date(today);
+      end.setHours(23, 59, 59, 999);
+      return { start, end, preset };
+    }
+
+    case "this-year": {
+      const start = new Date(now.getFullYear(), 0, 1);
+      const end = new Date(today);
+      end.setHours(23, 59, 59, 999);
+      return { start, end, preset };
+    }
+
+    case "last-year": {
+      const start = new Date(now.getFullYear() - 1, 0, 1);
+      const end = new Date(now.getFullYear() - 1, 11, 31);
       end.setHours(23, 59, 59, 999);
       return { start, end, preset };
     }
@@ -755,12 +787,12 @@ function calculateIntensity(minutes: number, maxMinutes: number): number {
 }
 
 /**
- * Generate daily heatmap (24 hours × 7 days of week)
+ * Generate day heatmap (24 hours × 7 days, aggregated from selected period)
  */
-export function generateDailyHeatmap(
+export function generateDayHeatmap(
   tasks: Task[],
   dateRange: DateRange,
-): DailyHeatmapData {
+): DayHeatmapData {
   const timeEntries = getTimeEntriesForDateRange(tasks, dateRange);
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -772,17 +804,20 @@ export function generateDailyHeatmap(
     }
   }
 
-  // Fill grid with actual data
+  // Aggregate all time entries by day-of-week and hour
+  let totalMinutes = 0;
   timeEntries.forEach((entry) => {
     const entryDate = ensureDate(entry.startTime);
     const dayOfWeek = entryDate.getDay();
     const hour = entryDate.getHours();
     const key = `${dayOfWeek}-${hour}`;
-    grid.set(key, (grid.get(key) || 0) + (entry.duration || 0));
+    const duration = entry.duration || 0;
+    grid.set(key, (grid.get(key) || 0) + duration);
+    totalMinutes += duration;
   });
 
   // Find max for intensity calculation
-  const maxMinutes = Math.max(...Array.from(grid.values()));
+  const maxMinutes = Math.max(...Array.from(grid.values()), 1);
 
   // Convert to heatmap cells
   const hourlyByDay: HeatmapCell[] = [];
@@ -811,106 +846,130 @@ export function generateDailyHeatmap(
   }
 
   const peakHours = Array.from(hourlyTotals.entries())
+    .filter(([, minutes]) => minutes > 0)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([hour]) => hour);
 
-  const leastActiveHours = Array.from(hourlyTotals.entries())
-    .filter(([, minutes]) => minutes > 0)
-    .sort((a, b) => a[1] - b[1])
-    .slice(0, 3)
-    .map(([hour]) => hour);
-
-  return {
-    hourlyByDay,
-    maxMinutes,
-    peakHours,
-    leastActiveHours,
-  };
-}
-
-/**
- * Generate weekly heatmap (7 days × multiple weeks)
- */
-export function generateWeeklyHeatmap(
-  tasks: Task[],
-  dateRange: DateRange,
-): WeeklyHeatmapData {
-  const timeEntries = getTimeEntriesForDateRange(tasks, dateRange);
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-  // Group by week and day
-  const grid = new Map<string, number>(); // key: "week-day"
-
-  timeEntries.forEach((entry) => {
-    const entryDate = ensureDate(entry.startTime);
-    const dayOfWeek = entryDate.getDay();
-
-    // Calculate week number from start date
-    const weekStart = new Date(dateRange.start);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start from Sunday
-    const diffTime = entryDate.getTime() - weekStart.getTime();
-    const weekNumber = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000));
-
-    const key = `${weekNumber}-${dayOfWeek}`;
-    grid.set(key, (grid.get(key) || 0) + (entry.duration || 0));
-  });
-
-  const maxMinutes = Math.max(...Array.from(grid.values()), 0);
-
-  // Convert to heatmap cells
-  const dailyByWeek: HeatmapCell[] = Array.from(grid.entries()).map(
-    ([key, minutes]) => {
-      const [weekNum, dayNum] = key.split("-").map(Number);
-      return {
-        day: `W${weekNum + 1} ${dayNames[dayNum]}`,
-        dayOfWeek: dayNum,
-        minutes,
-        intensity: calculateIntensity(minutes, maxMinutes),
-      };
-    },
-  );
-
   // Calculate peak days
   const dayTotals = new Map<number, number>();
   for (let day = 0; day < 7; day++) {
-    const total = Array.from(grid.entries())
-      .filter(([key]) => key.endsWith(`-${day}`))
-      .reduce((sum, [, minutes]) => sum + minutes, 0);
+    let total = 0;
+    for (let hour = 0; hour < 24; hour++) {
+      total += grid.get(`${day}-${hour}`) || 0;
+    }
     dayTotals.set(day, total);
   }
 
   const peakDays = Array.from(dayTotals.entries())
+    .filter(([, minutes]) => minutes > 0)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([day]) => dayNames[day]);
 
   return {
-    dailyByWeek,
+    hourlyByDay,
     maxMinutes,
+    peakHours,
     peakDays,
+    totalMinutes,
+    dateRange,
   };
 }
 
 /**
- * Generate monthly heatmap (calendar view)
+ * Generate week heatmap (7 days × multiple weeks in period)
  */
-export function generateMonthlyHeatmap(
+export function generateWeekHeatmap(
   tasks: Task[],
   dateRange: DateRange,
-): MonthlyHeatmapData {
+): WeekHeatmapData {
+  const timeEntries = getTimeEntriesForDateRange(tasks, dateRange);
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  // Calculate number of weeks in range
+  const weekStart = new Date(dateRange.start);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start from Sunday
+
+  const weekEnd = new Date(dateRange.end);
+  weekEnd.setDate(weekEnd.getDate() + (6 - weekEnd.getDay())); // End on Saturday
+
+  const weekCount = Math.ceil((weekEnd.getTime() - weekStart.getTime()) / (7 * 24 * 60 * 60 * 1000));
+
+  // Group by week and day
+  const grid = new Map<string, number>(); // key: "week-day"
+  const weekLabels: string[] = [];
+  let totalMinutes = 0;
+
+  for (let w = 0; w < weekCount; w++) {
+    const currentWeekStart = new Date(weekStart);
+    currentWeekStart.setDate(currentWeekStart.getDate() + w * 7);
+    weekLabels.push(`Week ${w + 1}`);
+  }
+
+  timeEntries.forEach((entry) => {
+    const entryDate = ensureDate(entry.startTime);
+    const dayOfWeek = entryDate.getDay();
+    const diffTime = entryDate.getTime() - weekStart.getTime();
+    const weekNumber = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000));
+
+    if (weekNumber >= 0 && weekNumber < weekCount) {
+      const key = `${weekNumber}-${dayOfWeek}`;
+      const duration = entry.duration || 0;
+      grid.set(key, (grid.get(key) || 0) + duration);
+      totalMinutes += duration;
+    }
+  });
+
+  const maxMinutes = Math.max(...Array.from(grid.values()), 1);
+
+  // Convert to heatmap cells
+  const dailyByWeek: HeatmapCell[] = [];
+  for (let week = 0; week < weekCount; week++) {
+    for (let day = 0; day < 7; day++) {
+      const key = `${week}-${day}`;
+      const minutes = grid.get(key) || 0;
+      dailyByWeek.push({
+        day: dayNames[day],
+        dayOfWeek: day,
+        weekNumber: week,
+        minutes,
+        intensity: calculateIntensity(minutes, maxMinutes),
+      });
+    }
+  }
+
+  return {
+    dailyByWeek,
+    maxMinutes,
+    weekLabels,
+    totalMinutes,
+    dateRange,
+  };
+}
+
+/**
+ * Generate month heatmap (calendar view of dates in period)
+ */
+export function generateMonthHeatmap(
+  tasks: Task[],
+  dateRange: DateRange,
+): MonthHeatmapData {
   const timeEntries = getTimeEntriesForDateRange(tasks, dateRange);
 
   // Group by date
   const grid = new Map<string, number>(); // key: "YYYY-MM-DD"
+  let totalMinutes = 0;
 
   timeEntries.forEach((entry) => {
     const entryDate = ensureDate(entry.startTime);
     const dateStr = entryDate.toISOString().split("T")[0];
-    grid.set(dateStr, (grid.get(dateStr) || 0) + (entry.duration || 0));
+    const duration = entry.duration || 0;
+    grid.set(dateStr, (grid.get(dateStr) || 0) + duration);
+    totalMinutes += duration;
   });
 
-  const maxMinutes = Math.max(...Array.from(grid.values()), 0);
+  const maxMinutes = Math.max(...Array.from(grid.values()), 1);
 
   // Convert to heatmap cells
   const dailyByMonth: HeatmapCell[] = Array.from(grid.entries())
@@ -926,15 +985,70 @@ export function generateMonthlyHeatmap(
     })
     .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 
-  // Find peak dates
-  const peakDates = Array.from(grid.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([date]) => date);
+  // Generate month label
+  const startMonth = dateRange.start.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  const endMonth = dateRange.end.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  const monthLabel = startMonth === endMonth ? startMonth : `${startMonth} - ${endMonth}`;
 
   return {
     dailyByMonth,
     maxMinutes,
-    peakDates,
+    monthLabel,
+    totalMinutes,
+    dateRange,
+  };
+}
+
+/**
+ * Generate year heatmap (12 months × N years)
+ */
+export function generateYearHeatmap(
+  tasks: Task[],
+  dateRange: DateRange,
+): YearHeatmapData {
+  const timeEntries = getTimeEntriesForDateRange(tasks, dateRange);
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  // Group by year-month
+  const grid = new Map<string, number>(); // key: "YYYY-MM"
+  let totalMinutes = 0;
+  const yearsSet = new Set<number>();
+
+  timeEntries.forEach((entry) => {
+    const entryDate = ensureDate(entry.startTime);
+    const year = entryDate.getFullYear();
+    const month = entryDate.getMonth();
+    const key = `${year}-${month.toString().padStart(2, "0")}`;
+    const duration = entry.duration || 0;
+    grid.set(key, (grid.get(key) || 0) + duration);
+    totalMinutes += duration;
+    yearsSet.add(year);
+  });
+
+  const maxMinutes = Math.max(...Array.from(grid.values()), 1);
+  const yearLabels = Array.from(yearsSet).sort();
+
+  // Convert to heatmap cells
+  const monthlyByYear: HeatmapCell[] = [];
+  yearLabels.forEach((year) => {
+    for (let month = 0; month < 12; month++) {
+      const key = `${year}-${month.toString().padStart(2, "0")}`;
+      const minutes = grid.get(key) || 0;
+      monthlyByYear.push({
+        day: monthNames[month],
+        monthNumber: month,
+        year,
+        minutes,
+        intensity: calculateIntensity(minutes, maxMinutes),
+      });
+    }
+  });
+
+  return {
+    monthlyByYear,
+    maxMinutes,
+    yearLabels: yearLabels.map(String),
+    totalMinutes,
+    dateRange,
   };
 }
