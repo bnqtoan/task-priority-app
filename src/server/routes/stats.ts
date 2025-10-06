@@ -44,6 +44,8 @@ statsRouter.get("/overview", async (c) => {
         operations: { count: 0, time: 0 },
         strategic: { count: 0, time: 0 },
         personal: { count: 0, time: 0 },
+        chore: { count: 0, time: 0 },
+        unclassified: { count: 0, time: 0 },
       },
       totalTasks: 0,
       totalTime: 0,
@@ -88,6 +90,8 @@ statsRouter.get("/overview", async (c) => {
       operations: { count: 0, time: 0 },
       strategic: { count: 0, time: 0 },
       personal: { count: 0, time: 0 },
+      chore: { count: 0, time: 0 },
+      unclassified: { count: 0, time: 0 },
     };
 
     let totalTime = 0;

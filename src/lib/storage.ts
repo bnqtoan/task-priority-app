@@ -14,6 +14,9 @@ import type {
 import { APP_CONFIG } from "../utils/config";
 import { api } from "../client/lib/api";
 import { initializeDemoData } from "./demo-data";
+import {
+  convertTasksDates,
+} from "../utils/date-utils";
 
 // Storage interface that both localStorage and API implementations follow
 interface TaskStorage {
@@ -88,7 +91,8 @@ class LocalStorageTaskStorage implements TaskStorage {
 
   private getTasksSync(): Task[] {
     const tasksJson = localStorage.getItem("demo-tasks");
-    return tasksJson ? JSON.parse(tasksJson) : [];
+    const tasks = tasksJson ? JSON.parse(tasksJson) : [];
+    return convertTasksDates(tasks);
   }
 
   private saveTasksSync(tasks: Task[]): void {
@@ -560,6 +564,8 @@ class LocalStorageTaskStorage implements TaskStorage {
         operations: calculateStats(operationsTasks),
         strategic: calculateStats(strategicTasks),
         personal: calculateStats(personalTasks),
+        chore: calculateStats(tasks.filter((t) => t.type === "chore")),
+        unclassified: calculateStats(tasks.filter((t) => t.type === "unclassified")),
       },
       totalTasks,
       totalTime,

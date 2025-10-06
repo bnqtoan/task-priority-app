@@ -290,7 +290,7 @@ function MonthHeatmapView({ data }: { data: MonthHeatmapData }) {
             );
           }
 
-          const dateObj = new Date(cell.date);
+          const dateObj = new Date(cell.date || cell.day);
           const dayOfMonth = dateObj.getDate();
           const isToday = new Date().toDateString() === dateObj.toDateString();
 

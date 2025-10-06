@@ -8,6 +8,7 @@ import type {
   OverviewStats,
   TaskRecommendations,
 } from "../../utils/types";
+import { convertTaskDates, convertTasksDates, convertUserDates, convertUserPreferencesDates } from "../../utils/date-utils";
 
 const API_BASE = "/api";
 
@@ -33,7 +34,10 @@ async function fetchAPI(endpoint: string, options?: RequestInit): Promise<any> {
 
 export const api = {
   // Auth
-  getMe: (): Promise<User> => fetchAPI("/auth/me"),
+  getMe: async (): Promise<User> => {
+    const user = await fetchAPI("/auth/me");
+    return convertUserDates(user);
+  },
 
   // Tasks
   getTasks: async (params?: {
@@ -51,7 +55,7 @@ export const api = {
     const response = await fetchAPI(
       `/tasks${queryString ? `?${queryString}` : ""}`,
     );
-    return response.tasks;
+    return convertTasksDates(response.tasks);
   },
 
   createTask: async (task: CreateTaskInput): Promise<Task> => {
@@ -59,7 +63,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify(task),
     });
-    return response.task;
+    return convertTaskDates(response.task);
   },
 
   updateTask: async (id: number, task: UpdateTaskInput): Promise<Task> => {
@@ -67,7 +71,7 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(task),
     });
-    return response.task;
+    return convertTaskDates(response.task);
   },
 
   deleteTask: (id: number): Promise<{ success: boolean }> =>
@@ -77,7 +81,7 @@ export const api = {
     const response = await fetchAPI(`/tasks/${id}/complete`, {
       method: "PATCH",
     });
-    return response.task;
+    return convertTaskDates(response.task);
   },
 
   // Time tracking
@@ -85,7 +89,7 @@ export const api = {
     const response = await fetchAPI(`/tasks/${taskId}/focus/start`, {
       method: "PATCH",
     });
-    return response.task;
+    return convertTaskDates(response.task);
   },
 
   endFocusSession: async (taskId: number, duration: number): Promise<Task> => {
@@ -93,7 +97,7 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ duration }),
     });
-    return response.task;
+    return convertTaskDates(response.task);
   },
 
   addTimeEntry: async (
@@ -105,16 +109,21 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ duration, type }),
     });
-    return response.task;
+    return convertTaskDates(response.task);
   },
 
   // Preferences
-  getPreferences: (): Promise<UserPreferences> => fetchAPI("/preferences"),
+  getPreferences: async (): Promise<UserPreferences> => {
+    const prefs = await fetchAPI("/preferences");
+    return convertUserPreferencesDates(prefs);
+  },
 
-  updatePreferences: (
+  updatePreferences: async (
     prefs: UpdatePreferencesInput,
-  ): Promise<UserPreferences> =>
-    fetchAPI("/preferences", { method: "PUT", body: JSON.stringify(prefs) }),
+  ): Promise<UserPreferences> => {
+    const updated = await fetchAPI("/preferences", { method: "PUT", body: JSON.stringify(prefs) });
+    return convertUserPreferencesDates(updated);
+  },
 
   // Stats
   getOverview: (): Promise<OverviewStats> => fetchAPI("/stats/overview"),

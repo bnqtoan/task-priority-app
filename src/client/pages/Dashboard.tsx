@@ -47,6 +47,7 @@ import {
   isOverdue,
   getUrgencyTier,
 } from "../../utils/urgency";
+import { convertTaskDates, convertTasksDates } from "../../utils/date-utils";
 import {
   loadPomodoroSettings,
   savePomodoroSettings,
@@ -155,7 +156,7 @@ const Dashboard = () => {
           taskStorage.getOverviewStats(),
         ]);
         setUser(userRes);
-        setTasks(tasksRes);
+        setTasks(convertTasksDates(tasksRes));
         setStats(statsRes);
 
         // Check for active focus session
@@ -248,7 +249,10 @@ const Dashboard = () => {
         ? await taskStorage.createTask(taskData)
         : await api.createTask(taskData);
 
-      setTasks([...tasks, createdTask]);
+      // Convert date strings to Date objects
+      const taskWithDates = convertTaskDates(createdTask);
+
+      setTasks([...tasks, taskWithDates]);
 
       // Only reset newTask if we're using the form (not QuickAdd)
       if (!taskToAdd) {
@@ -311,22 +315,11 @@ const Dashboard = () => {
       console.log("Task updated successfully:", updatedTask);
 
       // Convert date strings to Date objects
-      if (updatedTask.deadline && typeof updatedTask.deadline === 'string') {
-        updatedTask.deadline = new Date(updatedTask.deadline);
-      }
-      if (updatedTask.completedAt && typeof updatedTask.completedAt === 'string') {
-        updatedTask.completedAt = new Date(updatedTask.completedAt);
-      }
-      if (updatedTask.focusStartedAt && typeof updatedTask.focusStartedAt === 'string') {
-        updatedTask.focusStartedAt = new Date(updatedTask.focusStartedAt);
-      }
-      if (updatedTask.lastCompletedDate && typeof updatedTask.lastCompletedDate === 'string') {
-        updatedTask.lastCompletedDate = new Date(updatedTask.lastCompletedDate);
-      }
+      const taskWithDates = convertTaskDates(updatedTask);
 
       // Only update tasks state if we're not in the middle of debouncing the same field
       if (!skipLocalUpdate) {
-        setTasks(tasks.map((t) => (t.id === id ? updatedTask : t)));
+        setTasks(tasks.map((t) => (t.id === id ? taskWithDates : t)));
       }
 
       // Refresh stats if the change affects stats
@@ -337,7 +330,7 @@ const Dashboard = () => {
         setStats(updatedStats);
       }
 
-      return updatedTask;
+      return taskWithDates;
     } catch (err) {
       console.error("Failed to update task:", err);
       setError(err instanceof Error ? err.message : "Failed to update task");
@@ -434,6 +427,9 @@ const Dashboard = () => {
         selectedTaskForFocus.id,
       );
 
+      // Convert date strings to Date objects
+      const taskWithDates = convertTaskDates(updatedTask);
+
       // Handle Pomodoro mode
       if (duration === "pomodoro") {
         const { startGlobalPomodoroSession } = await import("../../lib/pomodoro-session");
@@ -441,10 +437,10 @@ const Dashboard = () => {
 
         setTasks(
           tasks.map((t) =>
-            t.id === selectedTaskForFocus.id ? updatedTask : t,
+            t.id === selectedTaskForFocus.id ? taskWithDates : t,
           ),
         );
-        setFocusTask(updatedTask);
+        setFocusTask(taskWithDates);
         setUsePomodoroMode(true);
         setIsFocusModeOpen(true);
         return;
@@ -452,22 +448,23 @@ const Dashboard = () => {
 
       // Save target duration to database if provided
       if (duration !== null) {
-        const taskWithDuration = await taskStorage.updateTask(updatedTask.id, {
+        const taskWithDuration = await taskStorage.updateTask(taskWithDates.id, {
           targetDuration: duration,
         });
+        const durationTaskWithDates = convertTaskDates(taskWithDuration);
         setTasks(
           tasks.map((t) =>
-            t.id === selectedTaskForFocus.id ? taskWithDuration : t,
+            t.id === selectedTaskForFocus.id ? durationTaskWithDates : t,
           ),
         );
-        setFocusTask(taskWithDuration);
+        setFocusTask(durationTaskWithDates);
       } else {
         setTasks(
           tasks.map((t) =>
-            t.id === selectedTaskForFocus.id ? updatedTask : t,
+            t.id === selectedTaskForFocus.id ? taskWithDates : t,
           ),
         );
-        setFocusTask(updatedTask);
+        setFocusTask(taskWithDates);
       }
 
       setUsePomodoroMode(false);
@@ -506,7 +503,11 @@ const Dashboard = () => {
         focusTask.id,
         duration,
       );
-      setTasks(tasks.map((t) => (t.id === focusTask.id ? updatedTask : t)));
+
+      // Convert date strings to Date objects
+      const taskWithDates = convertTaskDates(updatedTask);
+
+      setTasks(tasks.map((t) => (t.id === focusTask.id ? taskWithDates : t)));
       setFocusTask(null);
       setIsFocusModeOpen(false);
 
@@ -695,7 +696,11 @@ const Dashboard = () => {
       const completedTask = APP_CONFIG.IS_DEMO
         ? await taskStorage.completeTask(id)
         : await api.completeTask(id);
-      setTasks(tasks.map((t) => (t.id === id ? completedTask : t)));
+
+      // Convert date strings to Date objects
+      const taskWithDates = convertTaskDates(completedTask);
+
+      setTasks(tasks.map((t) => (t.id === id ? taskWithDates : t)));
 
       // Show celebration effect
       setShowCelebration(true);
@@ -715,19 +720,13 @@ const Dashboard = () => {
     try {
       if (APP_CONFIG.IS_DEMO) {
         // For demo, we'll just mark as completed since we don't have archived status
-        await taskStorage.completeTask(id);
-        setTasks(
-          tasks.map((t) =>
-            t.id === id
-              ? { ...t, status: "completed", completedAt: new Date() }
-              : t,
-          ),
-        );
+        const completedTask = await taskStorage.completeTask(id);
+        const taskWithDates = convertTaskDates(completedTask);
+        setTasks(tasks.map((t) => t.id === id ? taskWithDates : t));
       } else {
-        await api.updateTask(id, { status: "archived" });
-        setTasks(
-          tasks.map((t) => (t.id === id ? { ...t, status: "archived" } : t)),
-        );
+        const archivedTask = await api.updateTask(id, { status: "archived" });
+        const taskWithDates = convertTaskDates(archivedTask);
+        setTasks(tasks.map((t) => t.id === id ? taskWithDates : t));
       }
 
       // Refresh stats

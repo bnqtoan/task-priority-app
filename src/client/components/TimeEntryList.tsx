@@ -54,7 +54,7 @@ export const TimeEntryList = ({
   }
 
   // Sort entries by most recent first
-  const sortedEntries = [...timeEntries].sort((a, b) => {
+  const sortedEntries = [...(timeEntries || [])].sort((a, b) => {
     const dateA = a.endTime ? new Date(a.endTime).getTime() : new Date(a.startTime).getTime();
     const dateB = b.endTime ? new Date(b.endTime).getTime() : new Date(b.startTime).getTime();
     return dateB - dateA;
@@ -104,7 +104,7 @@ export const TimeEntryList = ({
             📋 Time Entry History
           </h5>
           <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-            {timeEntries.length} {timeEntries.length === 1 ? "entry" : "entries"}
+            {timeEntries?.length || 0} {timeEntries?.length === 1 ? "entry" : "entries"}
           </span>
         </div>
         <div className="flex items-center gap-2">
