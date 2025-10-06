@@ -21,14 +21,34 @@ const INTENSITY_COLORS = [
   "#475569", // intensity 4 - slate-600
 ];
 
+// Type guards
+function isDailyHeatmapData(data: any): data is DailyHeatmapData {
+  return data && "hourlyByDay" in data;
+}
+
+function isWeeklyHeatmapData(data: any): data is WeeklyHeatmapData {
+  return data && "dailyByWeek" in data;
+}
+
+function isMonthlyHeatmapData(data: any): data is MonthlyHeatmapData {
+  return data && "dailyByMonth" in data;
+}
+
 export function TimeHeatmap({ mode, data }: TimeHeatmapProps) {
   const heatmapView = useMemo(() => {
-    if (mode === "daily") {
-      return <DailyHeatmapView data={data as DailyHeatmapData} />;
-    } else if (mode === "weekly") {
-      return <WeeklyHeatmapView data={data as WeeklyHeatmapData} />;
+    if (mode === "daily" && isDailyHeatmapData(data)) {
+      return <DailyHeatmapView data={data} />;
+    } else if (mode === "weekly" && isWeeklyHeatmapData(data)) {
+      return <WeeklyHeatmapView data={data} />;
+    } else if (mode === "monthly" && isMonthlyHeatmapData(data)) {
+      return <MonthlyHeatmapView data={data} />;
     } else {
-      return <MonthlyHeatmapView data={data as MonthlyHeatmapData} />;
+      // Data doesn't match mode (race condition during mode switch)
+      return (
+        <div className="text-center py-8 text-gray-500">
+          Loading heatmap data...
+        </div>
+      );
     }
   }, [mode, data]);
 
@@ -135,6 +155,14 @@ function DailyHeatmapView({ data }: { data: DailyHeatmapData }) {
 function WeeklyHeatmapView({ data }: { data: WeeklyHeatmapData }) {
   const { dailyByWeek, peakDays } = data;
 
+  if (!dailyByWeek || dailyByWeek.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        No time tracking data available for weekly view
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       {/* Grid */}
@@ -187,6 +215,14 @@ function WeeklyHeatmapView({ data }: { data: WeeklyHeatmapData }) {
 
 function MonthlyHeatmapView({ data }: { data: MonthlyHeatmapData }) {
   const { dailyByMonth, peakDates } = data;
+
+  if (!dailyByMonth || dailyByMonth.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        No time tracking data available for monthly view
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
