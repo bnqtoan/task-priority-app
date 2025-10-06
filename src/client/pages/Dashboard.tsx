@@ -2021,7 +2021,11 @@ const Dashboard = () => {
                               )}
 
                               {/* Time Entry List */}
-                              <TimeEntryList timeEntries={task.timeEntries} maxHeight="300px" />
+                              <TimeEntryList
+                                timeEntries={task.timeEntries}
+                                totalActualTime={task.actualTime || 0}
+                                maxHeight="300px"
+                              />
                           </div>
 
                           {/* Third Row: Scheduling and Description - 2 columns */}

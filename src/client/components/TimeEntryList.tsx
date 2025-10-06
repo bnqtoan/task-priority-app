@@ -6,20 +6,48 @@ interface TimeEntryListProps {
   timeEntries?: TimeEntry[];
   maxVisible?: number;
   maxHeight?: string;
+  totalActualTime?: number; // Total time from task.actualTime
 }
 
 export const TimeEntryList = ({
   timeEntries,
-  maxHeight = "384px"
+  maxHeight = "384px",
+  totalActualTime = 0,
 }: TimeEntryListProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  if (!timeEntries || timeEntries.length === 0) {
+
+  // Calculate time from entries
+  const entriesTotal = timeEntries?.reduce((sum, entry) => sum + (entry.duration || 0), 0) || 0;
+  const hasEntries = timeEntries && timeEntries.length > 0;
+  const hasLegacyTime = totalActualTime > entriesTotal;
+
+  if (!hasEntries && !hasLegacyTime) {
     return (
       <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
         <Clock className="w-8 h-8 text-gray-400 mx-auto mb-2" />
         <p className="text-sm text-gray-600">No time entries yet</p>
         <p className="text-xs text-gray-500 mt-1">
           Start a focus session or add time manually to track your work
+        </p>
+      </div>
+    );
+  }
+
+  // Show legacy time notice if there's untracked time
+  if (!hasEntries && hasLegacyTime) {
+    return (
+      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-center gap-2 mb-2">
+          <Clock className="w-5 h-5 text-blue-600" />
+          <h5 className="text-sm font-semibold text-blue-900">
+            Total Time Tracked
+          </h5>
+        </div>
+        <p className="text-2xl font-bold text-blue-700 mb-2">
+          {totalActualTime} minutes
+        </p>
+        <p className="text-xs text-blue-600">
+          This time was tracked before detailed time entries were enabled. New sessions will appear in the history below.
         </p>
       </div>
     );
@@ -32,8 +60,9 @@ export const TimeEntryList = ({
     return dateB - dateA;
   });
 
-  // Calculate total time
-  const totalMinutes = timeEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
+  // Calculate total time (includes legacy time if exists)
+  const totalMinutes = hasLegacyTime ? totalActualTime : entriesTotal;
+  const legacyMinutes = hasLegacyTime ? totalActualTime - entriesTotal : 0;
 
   // Format date to readable string
   const formatDate = (date: Date): string => {
@@ -95,6 +124,24 @@ export const TimeEntryList = ({
           className="mt-3 space-y-2 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
           style={{ maxHeight: maxHeight }}
         >
+          {/* Show legacy time notice if applicable */}
+          {hasLegacyTime && legacyMinutes > 0 && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <Clock className="w-4 h-4 text-blue-600" />
+                <span className="text-xs font-semibold text-blue-900">
+                  Legacy Time Tracked
+                </span>
+              </div>
+              <p className="text-sm font-bold text-blue-700">
+                {legacyMinutes} minutes
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                Tracked before detailed time entries were enabled
+              </p>
+            </div>
+          )}
+
           {sortedEntries.map((entry) => (
           <div
             key={entry.id}
