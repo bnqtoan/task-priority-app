@@ -558,7 +558,30 @@ tasksRouter.patch("/:id/focus/end", async (c) => {
       .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
       .returning();
 
-    return c.json({ task: convertTaskDates(updatedTask) });
+    // Fetch time entries for this task
+    const taskTimeEntries = await db
+      .select()
+      .from(timeEntries)
+      .where(and(eq(timeEntries.taskId, id), eq(timeEntries.userId, user.id)))
+      .all();
+
+    // Convert time entry dates
+    const entriesWithDates = taskTimeEntries.map((entry) => ({
+      ...entry,
+      startTime: new Date(entry.startTime),
+      endTime: entry.endTime ? new Date(entry.endTime) : null,
+      createdAt: new Date(entry.createdAt),
+      updatedAt: new Date(entry.updatedAt),
+    }));
+
+    // Return task with time entries
+    return c.json({
+      task: {
+        ...convertTaskDates(updatedTask),
+        timeEntries: entriesWithDates,
+        subtasks: updatedTask.subtasks ? JSON.parse(updatedTask.subtasks as string) : [],
+      },
+    });
   } catch (error) {
     console.error("End focus session error:", error);
     return c.json({ error: "Failed to end focus session" }, 500);
@@ -625,7 +648,30 @@ tasksRouter.post("/:id/time", async (c) => {
       .where(and(eq(tasks.id, id), eq(tasks.userId, user.id)))
       .returning();
 
-    return c.json({ task: convertTaskDates(updatedTask) });
+    // Fetch time entries for this task
+    const taskTimeEntries = await db
+      .select()
+      .from(timeEntries)
+      .where(and(eq(timeEntries.taskId, id), eq(timeEntries.userId, user.id)))
+      .all();
+
+    // Convert time entry dates
+    const entriesWithDates = taskTimeEntries.map((entry) => ({
+      ...entry,
+      startTime: new Date(entry.startTime),
+      endTime: entry.endTime ? new Date(entry.endTime) : null,
+      createdAt: new Date(entry.createdAt),
+      updatedAt: new Date(entry.updatedAt),
+    }));
+
+    // Return task with time entries
+    return c.json({
+      task: {
+        ...convertTaskDates(updatedTask),
+        timeEntries: entriesWithDates,
+        subtasks: updatedTask.subtasks ? JSON.parse(updatedTask.subtasks as string) : [],
+      },
+    });
   } catch (error) {
     console.error("Add time entry error:", error);
     return c.json({ error: "Failed to add time entry" }, 500);
