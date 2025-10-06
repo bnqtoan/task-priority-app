@@ -606,7 +606,9 @@ const Dashboard = () => {
 
       // Within same tier, sort by deadline date (earliest first)
       if (a.deadline && b.deadline) {
-        return a.deadline.getTime() - b.deadline.getTime();
+        const aDate = a.deadline instanceof Date ? a.deadline : new Date(a.deadline);
+        const bDate = b.deadline instanceof Date ? b.deadline : new Date(b.deadline);
+        return aDate.getTime() - bDate.getTime();
       }
       if (a.deadline) return -1;
       if (b.deadline) return 1;
@@ -619,7 +621,9 @@ const Dashboard = () => {
       if (aOverdue && !bOverdue) return -1;
       if (!aOverdue && bOverdue) return 1;
       if (aOverdue && bOverdue && a.deadline && b.deadline) {
-        return a.deadline.getTime() - b.deadline.getTime(); // Most overdue first
+        const aDate = a.deadline instanceof Date ? a.deadline : new Date(a.deadline);
+        const bDate = b.deadline instanceof Date ? b.deadline : new Date(b.deadline);
+        return aDate.getTime() - bDate.getTime(); // Most overdue first
       }
       return 0;
     }
