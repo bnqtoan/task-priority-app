@@ -28,7 +28,7 @@ export const tasks = sqliteTable("tasks", {
   ease: integer("ease").notNull(), // 1-10
 
   // Categorization
-  type: text("type").notNull(), // 'revenue' | 'growth' | 'operations' | 'strategic' | 'personal'
+  type: text("type").notNull(), // 'revenue' | 'growth' | 'operations' | 'strategic' | 'personal' | 'chore' | 'unclassified'
   timeBlock: text("time_block").notNull(), // 'deep' | 'collaborative' | 'quick' | 'systematic'
 
   // Time & Decision

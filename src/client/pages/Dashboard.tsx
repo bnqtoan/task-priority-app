@@ -1180,6 +1180,8 @@ const Dashboard = () => {
               <option value="operations">🔧 Operations</option>
               <option value="strategic">🎯 Strategic</option>
               <option value="personal">✨ Personal</option>
+              <option value="chore">🧹 Chore</option>
+              <option value="unclassified">❓ Unclassified</option>
             </select>
           </div>
 
@@ -1898,6 +1900,10 @@ const Dashboard = () => {
                                     </option>
                                     <option value="personal">
                                       ✨ Personal
+                                    </option>
+                                    <option value="chore">🧹 Chore</option>
+                                    <option value="unclassified">
+                                      ❓ Unclassified
                                     </option>
                                   </select>
                                 </div>

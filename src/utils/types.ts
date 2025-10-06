@@ -18,7 +18,7 @@ export interface Task {
   impact: number; // 1-10
   confidence: number; // 1-10
   ease: number; // 1-10
-  type: "revenue" | "growth" | "operations" | "strategic" | "personal";
+  type: "revenue" | "growth" | "operations" | "strategic" | "personal" | "chore" | "unclassified";
   timeBlock: "deep" | "collaborative" | "quick" | "systematic";
   estimatedTime: number; // in minutes
   decision: "do" | "delegate" | "delay" | "delete";
@@ -131,6 +131,8 @@ export interface OverviewStats {
     operations: { count: number; time: number };
     strategic: { count: number; time: number };
     personal: { count: number; time: number };
+    chore: { count: number; time: number };
+    unclassified: { count: number; time: number };
   };
   totalTasks: number;
   totalTime: number;
@@ -275,6 +277,34 @@ export interface HourlyTimeData {
   hour: number;
   minutes: number;
   label: string;
+}
+
+export interface HeatmapCell {
+  hour?: number;
+  day: string;
+  dayOfWeek?: number;
+  date?: string;
+  minutes: number;
+  intensity: number; // 0-4 (5 levels)
+}
+
+export interface DailyHeatmapData {
+  hourlyByDay: HeatmapCell[]; // 24 hours × 7 days
+  maxMinutes: number;
+  peakHours: number[];
+  leastActiveHours: number[];
+}
+
+export interface WeeklyHeatmapData {
+  dailyByWeek: HeatmapCell[]; // 7 days × N weeks
+  maxMinutes: number;
+  peakDays: string[];
+}
+
+export interface MonthlyHeatmapData {
+  dailyByMonth: HeatmapCell[]; // Calendar days with time data
+  maxMinutes: number;
+  peakDates: string[];
 }
 
 export interface TopTask {

@@ -34,6 +34,9 @@ import type {
   TimeRangePreset,
   ReportData,
   EndOfDayInsights,
+  DailyHeatmapData,
+  WeeklyHeatmapData,
+  MonthlyHeatmapData,
 } from "../../utils/types";
 import { taskStorage } from "../../lib/storage";
 import {
@@ -42,7 +45,11 @@ import {
   generateEndOfDayInsights,
   formatDuration,
   formatPercentage,
+  generateDailyHeatmap,
+  generateWeeklyHeatmap,
+  generateMonthlyHeatmap,
 } from "../../utils/analytics";
+import { TimeHeatmap } from "../components/TimeHeatmap";
 
 const COLORS = {
   revenue: "#10b981",
@@ -50,6 +57,8 @@ const COLORS = {
   operations: "#f59e0b",
   strategic: "#8b5cf6",
   personal: "#ec4899",
+  chore: "#94a3b8",
+  unclassified: "#cbd5e1",
   deep: "#6366f1",
   collaborative: "#14b8a6",
   quick: "#f97316",
@@ -73,6 +82,10 @@ export function Reports() {
   const [customEndDate, setCustomEndDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [showInsights, setShowInsights] = useState(true);
+  const [heatmapMode, setHeatmapMode] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [heatmapData, setHeatmapData] = useState<
+    DailyHeatmapData | WeeklyHeatmapData | MonthlyHeatmapData | null
+  >(null);
 
   // Load tasks
   useEffect(() => {
@@ -108,7 +121,16 @@ export function Reports() {
     } else {
       setEndOfDayInsights(null);
     }
-  }, [tasks, dateRange, selectedPreset]);
+
+    // Generate heatmap data based on selected mode
+    if (heatmapMode === "daily") {
+      setHeatmapData(generateDailyHeatmap(tasks, dateRange));
+    } else if (heatmapMode === "weekly") {
+      setHeatmapData(generateWeeklyHeatmap(tasks, dateRange));
+    } else {
+      setHeatmapData(generateMonthlyHeatmap(tasks, dateRange));
+    }
+  }, [tasks, dateRange, selectedPreset, heatmapMode]);
 
   const handlePresetChange = (preset: TimeRangePreset) => {
     setSelectedPreset(preset);
@@ -737,6 +759,51 @@ export function Reports() {
             <Bar dataKey="minutes" fill="#14b8a6" />
           </BarChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* Work Pattern Heatmap */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-900">Work Pattern Heatmap</h3>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setHeatmapMode("daily")}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                heatmapMode === "daily"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Daily
+            </button>
+            <button
+              onClick={() => setHeatmapMode("weekly")}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                heatmapMode === "weekly"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Weekly
+            </button>
+            <button
+              onClick={() => setHeatmapMode("monthly")}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                heatmapMode === "monthly"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Monthly
+            </button>
+          </div>
+        </div>
+        {heatmapData && <TimeHeatmap mode={heatmapMode} data={heatmapData} />}
+        {!heatmapData && (
+          <div className="text-center py-8 text-gray-500">
+            No time tracking data available for this period
+          </div>
+        )}
       </div>
 
       {/* Top Tasks Table */}

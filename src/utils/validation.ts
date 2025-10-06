@@ -18,7 +18,7 @@ export const createTaskSchema = z.object({
   impact: z.number().int().min(1).max(10),
   confidence: z.number().int().min(1).max(10),
   ease: z.number().int().min(1).max(10),
-  type: z.enum(["revenue", "growth", "operations", "strategic", "personal"]),
+  type: z.enum(["revenue", "growth", "operations", "strategic", "personal", "chore", "unclassified"]),
   timeBlock: z.enum(["deep", "collaborative", "quick", "systematic"]),
   estimatedTime: z.number().int().min(5).max(1440), // 5 minutes to 24 hours
   decision: z.enum(["do", "delegate", "delay", "delete"]),

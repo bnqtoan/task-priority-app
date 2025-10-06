@@ -18,7 +18,7 @@ export function QuickAddFAB({ onAdd, onShowFullForm }: QuickAddFABProps) {
     impact: 5,
     confidence: 5,
     ease: 5,
-    type: "operations",
+    type: "unclassified",
     timeBlock: "quick",
     estimatedTime: 30,
     decision: "do",

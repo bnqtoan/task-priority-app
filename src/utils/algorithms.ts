@@ -191,6 +191,8 @@ export const getDecisionRecommendation = (
       growth: 1.2,
       operations: 1.0,
       personal: 0.8,
+      chore: 0.7,
+      unclassified: 1.0,
     };
     const strategicValue = (typeWeights[task.type] || 1.0) * impact;
     const feasibility = (confidence + ease) / 2;
@@ -218,6 +220,8 @@ export const getDecisionRecommendation = (
       growth: 1.2,
       operations: 1.0,
       personal: 0.8,
+      chore: 0.7,
+      unclassified: 1.0,
     };
 
     const valueScore = impact * (confidence / 10);
