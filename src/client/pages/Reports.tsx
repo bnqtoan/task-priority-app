@@ -251,26 +251,31 @@ export function Reports() {
         </div>
 
         {selectedPreset === "custom" && (
-          <div className="flex items-center gap-3 pt-3 border-t">
-            <input
-              type="date"
-              value={customStartDate}
-              onChange={(e) => setCustomStartDate(e.target.value)}
-              className="px-3 py-2 border rounded-lg"
-            />
-            <span className="text-gray-500">to</span>
-            <input
-              type="date"
-              value={customEndDate}
-              onChange={(e) => setCustomEndDate(e.target.value)}
-              className="px-3 py-2 border rounded-lg"
-            />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-4 mt-4 border-t border-gray-200 bg-gray-50 -mx-4 px-4 -mb-4 pb-4 rounded-b-lg">
+            <label className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">From:</span>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">To:</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </label>
             <button
               onClick={handleCustomDateApply}
               disabled={!customStartDate || !customEndDate}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg font-medium"
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition shadow-sm"
             >
-              Apply
+              Apply Range
             </button>
           </div>
         )}

@@ -251,7 +251,7 @@ function WeekHeatmapView({ data }: { data: WeekHeatmapData }) {
 function MonthHeatmapView({ data }: { data: MonthHeatmapData }) {
   const { dailyByMonth, monthLabel, totalMinutes } = data;
 
-  if (!dailyByMonth || dailyByMonth.length === 0 || totalMinutes === 0) {
+  if (!dailyByMonth || dailyByMonth.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
         No time tracking data available for monthly view
@@ -275,26 +275,43 @@ function MonthHeatmapView({ data }: { data: MonthHeatmapData }) {
             {day}
           </div>
         ))}
-        {dailyByMonth.map((cell) => {
+        {dailyByMonth.map((cell, index) => {
           const minutes = cell.minutes;
           const intensity = cell.intensity;
-          const dateObj = new Date(cell.date || "");
+          const isEmpty = !cell.date; // Empty cell (before month starts)
+
+          if (isEmpty) {
+            // Empty cell for calendar padding
+            return (
+              <div
+                key={`empty-${index}`}
+                className="aspect-square bg-gray-50"
+              />
+            );
+          }
+
+          const dateObj = new Date(cell.date);
           const dayOfMonth = dateObj.getDate();
+          const isToday = new Date().toDateString() === dateObj.toDateString();
 
           return (
             <div
               key={cell.date}
-              className="group relative p-3 rounded-lg border border-gray-200 hover:border-gray-400 transition-all cursor-pointer aspect-square flex flex-col items-center justify-center"
+              className={`group relative p-2 rounded-lg border transition-all aspect-square flex flex-col items-center justify-center ${
+                minutes > 0
+                  ? "border-gray-300 hover:border-gray-400 cursor-pointer"
+                  : "border-gray-200"
+              } ${isToday ? "ring-2 ring-blue-400" : ""}`}
               style={{
-                backgroundColor: INTENSITY_COLORS[intensity],
+                backgroundColor: minutes > 0 ? INTENSITY_COLORS[intensity] : "#ffffff",
               }}
             >
-              <div className="text-lg font-bold text-gray-700">
+              <div className={`text-sm font-semibold ${isToday ? "text-blue-600" : "text-gray-700"}`}>
                 {dayOfMonth}
               </div>
               {minutes > 0 && (
                 <>
-                  <div className="text-xs text-gray-600 mt-1">
+                  <div className="text-xs text-gray-600 mt-0.5">
                     {formatDuration(minutes)}
                   </div>
                   <div className="hidden group-hover:block absolute z-10 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap -top-14 left-1/2 transform -translate-x-1/2">

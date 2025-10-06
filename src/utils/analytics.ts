@@ -971,19 +971,55 @@ export function generateMonthHeatmap(
 
   const maxMinutes = Math.max(...Array.from(grid.values()), 1);
 
-  // Convert to heatmap cells
-  const dailyByMonth: HeatmapCell[] = Array.from(grid.entries())
-    .map(([dateStr, minutes]) => {
-      const date = new Date(dateStr);
-      return {
+  // Generate FULL calendar grid for proper month view
+  const dailyByMonth: HeatmapCell[] = [];
+
+  // Determine the calendar range (entire months covered by dateRange)
+  const startDate = new Date(dateRange.start);
+  const endDate = new Date(dateRange.end);
+
+  // For each month in the range
+  let currentMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+
+  while (currentMonth <= endDate) {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+
+    // Get first day of week for this month (0 = Sunday)
+    const firstDayOfWeek = new Date(year, month, 1).getDay();
+
+    // Get number of days in this month
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Add empty cells for days before month starts
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      dailyByMonth.push({
+        date: "", // Empty cell
+        day: "",
+        dayOfWeek: i,
+        minutes: 0,
+        intensity: 0,
+      });
+    }
+
+    // Add all days in the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const dateStr = date.toISOString().split("T")[0];
+      const minutes = grid.get(dateStr) || 0;
+
+      dailyByMonth.push({
         date: dateStr,
         day: date.toLocaleDateString("en-US", { weekday: "short" }),
         dayOfWeek: date.getDay(),
         minutes,
         intensity: calculateIntensity(minutes, maxMinutes),
-      };
-    })
-    .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+      });
+    }
+
+    // Move to next month
+    currentMonth = new Date(year, month + 1, 1);
+  }
 
   // Generate month label
   const startMonth = dateRange.start.toLocaleDateString("en-US", { month: "short", year: "numeric" });
